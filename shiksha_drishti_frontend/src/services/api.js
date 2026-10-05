@@ -46,6 +46,10 @@ export const masterApi = {
   getSubjects: () => api.get('/subjects'),
   getQuestions: (params) => api.get('/questions', { params }),
   getLearningOutcomes: (params) => api.get('/learning-outcomes', { params }),
+  getDistricts: () => api.get('/master/districts'),
+  getBlocks: (params) => api.get('/master/blocks', { params }),
+  getClusters: (params) => api.get('/master/clusters', { params }),
+  getSchools: (params) => api.get('/master/schools', { params }),
 };
 
 

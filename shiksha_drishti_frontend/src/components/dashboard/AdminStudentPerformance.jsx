@@ -3,7 +3,7 @@ import { Box, Card, CardContent, Typography, Chip, Button, Tab, Tabs, Table, Tab
 import { People, TrendingUp, Warning, CheckCircle, Search, Refresh, EmojiEvents, Insights, CompareArrows, WorkspacePremium, MenuBook, School, MapOutlined, Close, Speed, Groups, Female, Male, BarChart as BarChartIcon } from "@mui/icons-material";
 import { ResponsiveContainer, PieChart, Pie, Cell, BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, AreaChart, Area, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ReferenceLine } from "recharts";
 import { motion, AnimatePresence } from "framer-motion";
-import { stateApi } from "../../services/api";
+import { stateApi, masterApi } from "../../services/api";
 
 const GRADE_COLORS = { "A+": "#10b981", "A": "#0284c7", "B": "#6366f1", "C": "#f59e0b", "Remedial": "#ef4444" };
 const fadeUp = { initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.35, ease: "easeOut" } };
@@ -95,7 +95,13 @@ export default function AdminStudentPerformance({ filterParams = EMPTY_OBJ }) {
   const [classFilter, setClassFilter] = useState("ALL");
   const [districtFilter, setDistrictFilter] = useState("ALL");
   const [studentSearch, setStudentSearch] = useState("");
-  const [blockSearch, setBlockSearch] = useState("");
+  const [masterDistricts, setMasterDistricts] = useState([]);
+
+  useEffect(() => {
+    masterApi.getDistricts()
+      .then(res => setMasterDistricts(res.data || []))
+      .catch(err => console.error('Failed to load master districts:', err));
+  }, []);
 
   const filterParamsKey = useMemo(() => JSON.stringify(filterParams || {}), [filterParams]);
 
@@ -171,7 +177,14 @@ export default function AdminStudentPerformance({ filterParams = EMPTY_OBJ }) {
   }, [blockBreakdown, blockSearch]);
 
   const uniqueClasses = useMemo(() => [...new Set(students.map(s => s.class_name).filter(Boolean))].sort(), [students]);
-  const uniqueDistricts = useMemo(() => [...new Set(students.map(s => s.district_name).filter(Boolean))].sort(), [students]);
+  const uniqueDistricts = useMemo(() => {
+    if (masterDistricts.length > 0) {
+      return masterDistricts.map(d => d.district_name).sort();
+    }
+    const fromBreakdown = districtBreakdown.map(d => d.district_name).filter(Boolean);
+    const fromStudents = students.map(s => s.district_name).filter(Boolean);
+    return [...new Set([...fromBreakdown, ...fromStudents])].sort();
+  }, [masterDistricts, districtBreakdown, students]);
 
   const tabs = [
     "Performance Overview", "Class-Wise Analysis", "Subject Diagnostics",

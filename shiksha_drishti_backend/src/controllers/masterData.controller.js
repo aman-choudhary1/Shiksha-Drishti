@@ -152,4 +152,156 @@ async function getClasses(req, res) {
   res.json(result.rows);
 }
 
-module.exports = { getSchool, getClassStudents, getAcademicYears, getSubjects, getQuestions, getLearningOutcomes, getClasses };
+/**
+ * GET /api/master/districts
+ * Returns all 33 districts of Chhattisgarh with summary counts
+ */
+async function getDistricts(req, res) {
+  const result = await pool.query(`
+    SELECT d.district_cd, d.district_name,
+      COUNT(DISTINCT b.block_cd)   AS total_blocks,
+      COUNT(DISTINCT s.udise_code) AS total_schools
+    FROM sd_districts d
+    LEFT JOIN sd_blocks b ON b.district_cd = d.district_cd
+    LEFT JOIN sd_schools s ON s.district_cd = d.district_cd
+    GROUP BY d.district_cd, d.district_name
+    ORDER BY d.district_name ASC
+  `);
+  res.json(result.rows);
+}
+
+/**
+ * GET /api/master/blocks?district_cd=&district_name=
+ * Returns blocks, optionally filtered by district
+ */
+async function getBlocks(req, res) {
+  const { district_cd, district_name } = req.query;
+  const params = [];
+  const conds = [];
+
+  if (district_cd && district_cd !== 'ALL') {
+    params.push(district_cd);
+    conds.push(`(b.district_cd = $${params.length})`);
+  }
+  if (district_name && district_name !== 'ALL') {
+    params.push(`%${district_name}%`);
+    conds.push(`(b.district_name ILIKE $${params.length})`);
+  }
+
+  const where = conds.length ? 'WHERE ' + conds.join(' AND ') : '';
+
+  const result = await pool.query(`
+    SELECT b.block_cd, b.block_name, b.district_cd, b.district_name,
+      COUNT(DISTINCT c.cluster_cd) AS total_clusters,
+      COUNT(DISTINCT s.udise_code) AS total_schools
+    FROM sd_blocks b
+    LEFT JOIN sd_clusters c ON c.block_cd = b.block_cd
+    LEFT JOIN sd_schools s ON s.block_cd = b.block_cd
+    ${where}
+    GROUP BY b.block_cd, b.block_name, b.district_cd, b.district_name
+    ORDER BY b.district_name ASC, b.block_name ASC
+  `, params);
+
+  res.json(result.rows);
+}
+
+/**
+ * GET /api/master/clusters?block_cd=&district_cd=&block_name=
+ * Returns clusters, optionally filtered
+ */
+async function getClusters(req, res) {
+  const { block_cd, district_cd, block_name, district_name } = req.query;
+  const params = [];
+  const conds = [];
+
+  if (block_cd && block_cd !== 'ALL') {
+    params.push(block_cd);
+    conds.push(`(c.block_cd = $${params.length})`);
+  }
+  if (district_cd && district_cd !== 'ALL') {
+    params.push(district_cd);
+    conds.push(`(c.district_cd = $${params.length})`);
+  }
+  if (block_name && block_name !== 'ALL') {
+    params.push(`%${block_name}%`);
+    conds.push(`(c.block_name ILIKE $${params.length})`);
+  }
+  if (district_name && district_name !== 'ALL') {
+    params.push(`%${district_name}%`);
+    conds.push(`(c.district_name ILIKE $${params.length})`);
+  }
+
+  const where = conds.length ? 'WHERE ' + conds.join(' AND ') : '';
+
+  const result = await pool.query(`
+    SELECT c.cluster_cd, c.cluster_name, c.block_cd, c.block_name, c.district_cd, c.district_name,
+      COUNT(DISTINCT s.udise_code) AS total_schools
+    FROM sd_clusters c
+    LEFT JOIN sd_schools s ON s.cluster_cd = c.cluster_cd
+    ${where}
+    GROUP BY c.cluster_cd, c.cluster_name, c.block_cd, c.block_name, c.district_cd, c.district_name
+    ORDER BY c.district_name ASC, c.block_name ASC, c.cluster_name ASC
+  `, params);
+
+  res.json(result.rows);
+}
+
+/**
+ * GET /api/master/schools?district_cd=&block_cd=&cluster_cd=&search=&limit=
+ */
+async function getSchoolsList(req, res) {
+  const { district_cd, district_name, block_cd, block_name, cluster_cd, search, limit = 100 } = req.query;
+  const params = [];
+  const conds = ['is_active = true'];
+
+  if (district_cd && district_cd !== 'ALL') {
+    params.push(district_cd);
+    conds.push(`(district_cd = $${params.length})`);
+  }
+  if (district_name && district_name !== 'ALL') {
+    params.push(`%${district_name}%`);
+    conds.push(`(district_name ILIKE $${params.length})`);
+  }
+  if (block_cd && block_cd !== 'ALL') {
+    params.push(block_cd);
+    conds.push(`(block_cd = $${params.length})`);
+  }
+  if (block_name && block_name !== 'ALL') {
+    params.push(`%${block_name}%`);
+    conds.push(`(block_name ILIKE $${params.length})`);
+  }
+  if (cluster_cd && cluster_cd !== 'ALL') {
+    params.push(cluster_cd);
+    conds.push(`(cluster_cd = $${params.length})`);
+  }
+  if (search && search.trim()) {
+    params.push(`%${search.trim()}%`);
+    conds.push(`(school_name ILIKE $${params.length} OR udise_code::text ILIKE $${params.length})`);
+  }
+
+  params.push(Math.min(Number(limit) || 100, 500));
+  const result = await pool.query(`
+    SELECT udise_code, school_name, cluster_cd, cluster_name, block_cd, block_name,
+           district_cd, district_name, school_type, school_management, hos_name, hos_mobile
+    FROM sd_schools
+    WHERE ${conds.join(' AND ')}
+    ORDER BY district_name ASC, block_name ASC, school_name ASC
+    LIMIT $${params.length}
+  `, params);
+
+  res.json(result.rows);
+}
+
+module.exports = {
+  getSchool,
+  getClassStudents,
+  getAcademicYears,
+  getSubjects,
+  getQuestions,
+  getLearningOutcomes,
+  getClasses,
+  getDistricts,
+  getBlocks,
+  getClusters,
+  getSchoolsList,
+};
