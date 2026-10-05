@@ -95,6 +95,7 @@ export default function AdminStudentPerformance({ filterParams = EMPTY_OBJ }) {
   const [classFilter, setClassFilter] = useState("ALL");
   const [districtFilter, setDistrictFilter] = useState("ALL");
   const [studentSearch, setStudentSearch] = useState("");
+  const [blockSearch, setBlockSearch] = useState("");
   const [masterDistricts, setMasterDistricts] = useState([]);
 
   useEffect(() => {
