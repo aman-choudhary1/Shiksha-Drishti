@@ -12,7 +12,7 @@ import {
   People, BarChart, Logout, ChevronLeft,
   NotificationsNone, Add, AutoAwesome,
   HelpOutlineOutlined, KeyboardArrowDown,
-  Verified,
+  Verified, Insights, Layers,
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
@@ -21,24 +21,30 @@ const DRAWER_WIDTH_OPEN   = 264;
 const DRAWER_WIDTH_CLOSED = 72;
 
 const teacherNavItems = [
-  { label: 'Dashboard',      icon: <Dashboard />,          path: '/dashboard',        color: '#0284c7' },
-  { label: 'Assessments',    icon: <AssignmentTurnedIn />, path: '/assessments',       color: '#8b5cf6' },
-  { label: 'Students',       icon: <People />,             path: '/students',          color: '#10b981' },
-  { label: 'Analytics & LO', icon: <AutoAwesome />,        path: '/analytics',         color: '#e89005', badge: 'New' },
-  { label: 'School Profile', icon: <School />,             path: '/schools',           color: '#ef4444' },
+  { label: 'Dashboard',          icon: <Dashboard />,          path: '/dashboard',          color: '#0284c7' },
+  { label: 'Academic Analytics', icon: <Insights />,           path: '/academic-analytics', color: '#0ea5e9', badge: 'UDISE' },
+  { label: 'Question Bank',      icon: <Layers />,             path: '/question-bank',      color: '#6366f1', badge: 'Admin' },
+  { label: 'Assessments',        icon: <AssignmentTurnedIn />, path: '/assessments',        color: '#8b5cf6' },
+  { label: 'Students',           icon: <People />,             path: '/students',           color: '#10b981' },
+  { label: 'Analytics & LO',     icon: <AutoAwesome />,        path: '/analytics',          color: '#e89005', badge: 'New' },
+  { label: 'School Profile',     icon: <School />,             path: '/schools',            color: '#ef4444' },
 ];
 
 const principalNavItems = [
-  { label: 'School Overview',    icon: <Dashboard />,          path: '/dashboard',          tabIndex: 0, color: '#0284c7' },
+  { label: 'School Overview',     icon: <Dashboard />,          path: '/dashboard',          tabIndex: 0, color: '#0284c7' },
+  { label: 'Academic Analytics',  icon: <Insights />,           path: '/academic-analytics', color: '#0ea5e9', badge: 'UDISE' },
+  { label: 'Question Bank',       icon: <Layers />,             path: '/question-bank',      color: '#6366f1', badge: 'Admin' },
   { label: 'Faculty Performance', icon: <AssignmentTurnedIn />, path: '/dashboard?tab=1',    tabIndex: 1, color: '#8b5cf6' },
-  { label: 'Student Analytics',  icon: <People />,             path: '/dashboard?tab=2',    tabIndex: 2, color: '#10b981' },
-  { label: 'Exam Comparison',    icon: <BarChart />,           path: '/dashboard?tab=3',    tabIndex: 3, color: '#e89005' },
-  { label: 'LO Mastery',         icon: <AutoAwesome />,        path: '/dashboard?tab=4',    tabIndex: 4, color: '#f59e0b', badge: 'LO' },
-  { label: 'School Profile',     icon: <School />,             path: '/schools',            color: '#ef4444' },
+  { label: 'Student Analytics',   icon: <People />,             path: '/dashboard?tab=2',    tabIndex: 2, color: '#10b981' },
+  { label: 'Exam Comparison',     icon: <BarChart />,           path: '/dashboard?tab=3',    tabIndex: 3, color: '#e89005' },
+  { label: 'LO Mastery',          icon: <AutoAwesome />,        path: '/dashboard?tab=4',    tabIndex: 4, color: '#f59e0b', badge: 'LO' },
+  { label: 'School Profile',      icon: <School />,             path: '/schools',            color: '#ef4444' },
 ];
 
 const cacNavItems = [
   { label: 'Cluster Overview',   icon: <Dashboard />,          path: '/dashboard',          tabIndex: 0, color: '#0284c7' },
+  { label: 'Academic Analytics', icon: <Insights />,           path: '/academic-analytics', color: '#0ea5e9', badge: 'UDISE' },
+  { label: 'Question Bank',      icon: <Layers />,             path: '/question-bank',      color: '#6366f1', badge: 'Admin' },
   { label: 'School Matrix',      icon: <AssignmentTurnedIn />, path: '/dashboard?tab=1',    tabIndex: 1, color: '#8b5cf6' },
   { label: 'LO Diagnostics',     icon: <AutoAwesome />,        path: '/dashboard?tab=2',    tabIndex: 2, color: '#10b981', badge: 'LO' },
   { label: 'HOS Directory',      icon: <School />,             path: '/dashboard?tab=3',    tabIndex: 3, color: '#ef4444' },
@@ -46,6 +52,8 @@ const cacNavItems = [
 
 const blockNavItems = [
   { label: 'Block Overview',       icon: <Dashboard />,          path: '/dashboard',          tabIndex: 0, color: '#0284c7' },
+  { label: 'Academic Analytics',   icon: <Insights />,           path: '/academic-analytics', color: '#0ea5e9', badge: 'UDISE' },
+  { label: 'Question Bank',        icon: <Layers />,             path: '/question-bank',      color: '#6366f1', badge: 'Admin' },
   { label: 'Cluster Benchmarks',   icon: <BarChart />,           path: '/dashboard?tab=1',    tabIndex: 1, color: '#8b5cf6' },
   { label: 'School League Table',  icon: <School />,             path: '/dashboard?tab=2',    tabIndex: 2, color: '#10b981' },
   { label: 'Question Diagnostics', icon: <AutoAwesome />,        path: '/dashboard?tab=3',    tabIndex: 3, color: '#f59e0b', badge: 'BEO' },
@@ -54,6 +62,8 @@ const blockNavItems = [
 
 const districtNavItems = [
   { label: 'District Overview',    icon: <Dashboard />,          path: '/dashboard',          tabIndex: 0, color: '#0284c7' },
+  { label: 'Academic Analytics',   icon: <Insights />,           path: '/academic-analytics', color: '#0ea5e9', badge: 'UDISE' },
+  { label: 'Question Bank',        icon: <Layers />,             path: '/question-bank',      color: '#6366f1', badge: 'Admin' },
   { label: 'Block Benchmarks',     icon: <BarChart />,           path: '/dashboard?tab=1',    tabIndex: 1, color: '#8b5cf6' },
   { label: 'School League Table',  icon: <School />,             path: '/dashboard?tab=2',    tabIndex: 2, color: '#10b981' },
   { label: 'Question Diagnostics', icon: <AutoAwesome />,        path: '/dashboard?tab=3',    tabIndex: 3, color: '#f59e0b', badge: 'DEO' },
@@ -62,6 +72,8 @@ const districtNavItems = [
 
 const stateNavItems = [
   { label: 'State Overview',       icon: <Dashboard />,          path: '/dashboard',          tabIndex: 0, color: '#0284c7' },
+  { label: 'Academic Analytics',   icon: <Insights />,           path: '/academic-analytics', color: '#0ea5e9', badge: 'UDISE' },
+  { label: 'Question Bank',        icon: <Layers />,             path: '/question-bank',      color: '#6366f1', badge: 'Admin' },
   { label: 'District League',      icon: <BarChart />,           path: '/dashboard?tab=1',    tabIndex: 1, color: '#8b5cf6' },
   { label: 'Subject Diagnostics',  icon: <AutoAwesome />,        path: '/dashboard?tab=2',    tabIndex: 2, color: '#10b981', badge: 'AI' },
   { label: 'Question Analytics',   icon: <AssignmentTurnedIn />, path: '/dashboard?tab=3',    tabIndex: 3, color: '#f59e0b', badge: 'HOT' },
@@ -94,6 +106,8 @@ export default function AppLayout() {
 
   const getPageTitle = () => {
     const p = location.pathname;
+    if (p.includes('/academic-analytics') || p.includes('/academic')) return 'Overall Academic Analytics (UDISE 5.75M Active Students)';
+    if (p.includes('/question-bank'))  return 'Assessment Question Bank & Paper Authoring (Mobile API & SLA)';
     if (p.includes('/report-card'))    return 'Class Report Card';
     if (p.includes('/question-marks')) return 'LO Marks Entry';
     if (p.includes('/assessments/new'))return 'Create Assessment';

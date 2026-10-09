@@ -17,7 +17,9 @@ import NewAssessment from './components/marks/NewAssessment';
 import AssessmentsList from './components/marks/AssessmentsList';
 import StudentsList from './components/marks/StudentsList';
 import AnalyticsOverview from './components/dashboard/AnalyticsOverview';
+import AcademicOverview from './components/dashboard/AcademicOverview';
 import SchoolProfile from './components/school/SchoolProfile';
+import QuestionBankAdmin from './components/admin/QuestionBankAdmin';
 import { CircularProgress, Box } from '@mui/material';
 
 function ProtectedRoute({ children }) {
@@ -76,6 +78,10 @@ function AppRoutes() {
         <Route path="assessments/:assessmentId/report-card" element={<ClassReportCard />} />
         <Route path="assessments/:assessmentId/question-marks" element={<QuestionMarksEntry />} />
         <Route path="students" element={<StudentsList />} />
+        <Route path="academic-analytics" element={<AcademicOverview />} />
+        <Route path="academic" element={<Navigate to="/academic-analytics" replace />} />
+        <Route path="question-bank" element={<QuestionBankAdmin />} />
+        <Route path="question-authoring" element={<Navigate to="/question-bank" replace />} />
         <Route path="analytics" element={<AnalyticsOverview />} />
         <Route path="schools" element={<SchoolProfile />} />
       </Route>

@@ -17,7 +17,7 @@ import {
   CompareArrows, Download, TableView, Speed, FilterList, Tune,
   ArrowUpward, ArrowDownward, WorkspacePremium, MilitaryTech, Calculate,
   MenuBook, ArrowForward,
-  FilterAlt, FilterAltOff
+  FilterAlt, FilterAltOff, Assessment
 } from '@mui/icons-material';
 import {
   ResponsiveContainer, PieChart, Pie, Cell,
@@ -31,6 +31,7 @@ import { useAuth } from '../../context/AuthContext';
 import { principalApi } from '../../services/api';
 import { exportSchoolSubjectBenchmarkXlsx } from '../../utils/excelExport';
 import ClassWiseAnalysisTab from './ClassWiseAnalysisTab';
+import AcademicOverview from './AcademicOverview';
 
 const GRADE_COLORS = {
   a_plus: '#10b981', // Emerald
@@ -2872,6 +2873,11 @@ export default function PrincipalDashboard() {
             </Table>
           </TableContainer>
         </Card>
+      )}
+
+      {/* ── TAB 7: Overall Academic Analytics (UDISE – State-wide data) ── */}
+      {currentTab === 7 && (
+        <AcademicOverview />
       )}
 
       {/* ── Modal: Student 360° Detailed Performance View ── */}

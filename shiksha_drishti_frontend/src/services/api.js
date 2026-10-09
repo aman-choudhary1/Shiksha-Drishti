@@ -4,7 +4,7 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 
 const api = axios.create({
   baseURL: API_BASE,
-  timeout: 30000,
+  timeout: 60000,
   headers: { 'Content-Type': 'application/json' },
 });
 
@@ -118,6 +118,40 @@ export const stateApi = {
   getQuestions: (params) => api.get('/state/questions',  { params }),
   getTeachers:  (params) => api.get('/state/teachers',   { params }),
   getStudents:  (params) => api.get('/state/students',   { params }),
+};
+
+// Academic (UDISE) Data APIs – read-only analytics on 6.9M student records
+export const academicApi = {
+  getBundle:           (params) => api.get('/academic/bundle',       { params }),
+  getSummary:          (params) => api.get('/academic/summary',      { params }),
+  getClasswise:        (params) => api.get('/academic/classwise',    { params }),
+  getDistrictwise:     (params) => api.get('/academic/districtwise', { params }),
+  getGender:           (params) => api.get('/academic/gender',       { params }),
+  getCategory:         (params) => api.get('/academic/category',     { params }),
+  getResults:          (params) => api.get('/academic/results',      { params }),
+  getSpecial:          (params) => api.get('/academic/special',      { params }),
+  getRankings:         (params) => api.get('/academic/rankings',     { params }),
+};
+
+// Question Bank & Assessment Authoring APIs (Mobile & Web)
+export const questionBankApi = {
+  getPapers: (params) => api.get('/question-bank/papers', { params }),
+  getPaper: (paperCode) => api.get(`/question-bank/papers/${paperCode}`),
+  savePaper: (data) => api.post('/question-bank/papers', data),
+  saveQuestion: (data) => api.post('/question-bank/questions', data),
+  deleteQuestion: (id) => api.delete(`/question-bank/questions/${id}`),
+  uploadImage: (formData) => api.post('/question-bank/upload-image', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  seedSla1021: () => api.post('/question-bank/seed-sla-1021'),
+  submitAssessment: (data) => api.post('/question-bank/submit', data),
+
+  // Dedicated Mobile App APIs (Exact JSON Schema)
+  getMobilePapers: (params) => api.get('/mobile/assessments/papers', { params }),
+  getMobilePaper: (paperCode, params) => api.get(`/mobile/assessments/paper/${paperCode}`, { params }),
+  submitMobileAssessment: (data) => api.post('/mobile/assessments/submit', data),
+  importMobileJson: (jsonPayload) => api.post('/mobile/assessments/import-json', jsonPayload),
+  seedHindi1011: () => api.post('/mobile/assessments/seed-hindi-1011'),
 };
 
 export default api;

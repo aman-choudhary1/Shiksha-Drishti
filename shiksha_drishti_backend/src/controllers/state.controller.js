@@ -1,4 +1,5 @@
 const pool = require('../config/db');
+const cache = require('../utils/cache');
 const asyncHandler = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
 // ── Specific SQL Filter Builders (Zero Table Alias Conflicts) ────────────────
@@ -99,6 +100,10 @@ function getMarksFilter(query) {
 // GET /api/state/overview — Dynamic multi-dimension filter enabled
 // ─────────────────────────────────────────────────────────────────────────────
 const getStateOverview = asyncHandler(async (req, res) => {
+  const cacheKey = `state:overview:${JSON.stringify(req.query || {})}`;
+  const cachedData = cache.get(cacheKey);
+  if (cachedData) return res.json(cachedData);
+
   const { tier, district } = req.query;
 
   const sf  = getSchoolFilter(req.query);
@@ -465,7 +470,7 @@ const getStateOverview = asyncHandler(async (req, res) => {
     };
   });
 
-  res.json({
+  const responseData = {
     state: {
       state_name:      'CHHATTISGARH',
       officer_name:    req.user?.full_name || 'State Administrator',
@@ -543,13 +548,20 @@ const getStateOverview = asyncHandler(async (req, res) => {
       schools_active: Number(m.schools_active || 0),
     })),
     state_directives: stateDirectives,
-  });
+  };
+
+  cache.set(cacheKey, responseData, 60); // 1 minute cache
+  res.json(responseData);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/state/districts — Full district league table with filters
 // ─────────────────────────────────────────────────────────────────────────────
 const getStateDistricts = asyncHandler(async (req, res) => {
+  const cacheKey = `state:districts:${JSON.stringify(req.query || {})}`;
+  const cachedData = cache.get(cacheKey);
+  if (cachedData) return res.json(cachedData);
+
   const { tier } = req.query;
   const sf  = getSchoolFilter(req.query);
   const stf = getStudentFilter(req.query);
@@ -649,7 +661,9 @@ const getStateDistricts = asyncHandler(async (req, res) => {
 
   districts = districts.sort((a, b) => b.avg_score_pct - a.avg_score_pct).map((d, i) => ({ ...d, rank: i + 1 }));
 
-  res.json({ districts, count: districts.length });
+  const responseData = { districts, count: districts.length };
+  cache.set(cacheKey, responseData, 60); // 1 minute cache
+  res.json(responseData);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
