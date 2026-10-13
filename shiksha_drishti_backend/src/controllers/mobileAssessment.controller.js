@@ -119,19 +119,36 @@ exports.getMobilePaperByCode = async (req, res, next) => {
       );
     } else if (targetClass && targetSubject) {
       // 2. Fetch directly by Class & Subject (No Paper Code needed!)
+      const parsedClass = parseInt(String(targetClass).replace(/\D/g, ''), 10);
+      const searchClass = isNaN(parsedClass) ? targetClass : parsedClass;
+      
       paperRes = await pool.query(
         `SELECT * FROM sd_assessment_papers 
-         WHERE class_no = $1 AND subject ILIKE $2 AND is_active = true 
+         WHERE (class_no = $1 OR class_no::text = $2::text) 
+           AND (subject ILIKE $3 OR $4 ILIKE CONCAT('%', subject, '%')) 
+           AND is_active = true 
          ORDER BY id DESC LIMIT 1`,
-        [targetClass, `%${targetSubject}%`]
+        [searchClass, String(targetClass), `%${targetSubject}%`, targetSubject]
       );
+
+      // Fallback: If no exact paper for class+subject, check closest paper for that subject
+      if (!paperRes || paperRes.rows.length === 0) {
+        paperRes = await pool.query(
+          `SELECT * FROM sd_assessment_papers 
+           WHERE (subject ILIKE $1 OR $2 ILIKE CONCAT('%', subject, '%')) AND is_active = true 
+           ORDER BY id ASC LIMIT 1`,
+          [`%${targetSubject}%`, targetSubject]
+        );
+      }
     } else if (targetClass) {
+      const parsedClass = parseInt(String(targetClass).replace(/\D/g, ''), 10);
+      const searchClass = isNaN(parsedClass) ? targetClass : parsedClass;
       // 3. Fetch first active paper for this class
       paperRes = await pool.query(
         `SELECT * FROM sd_assessment_papers 
-         WHERE class_no = $1 AND is_active = true 
+         WHERE (class_no = $1 OR class_no::text = $2::text) AND is_active = true 
          ORDER BY id ASC LIMIT 1`,
-        [targetClass]
+        [searchClass, String(targetClass)]
       );
     } else {
       return res.status(400).json({
@@ -710,3 +727,443 @@ exports.seedHindiPaper1011 = async (req, res, next) => {
   req.body = paper1011Data;
   return exports.importMobileJson(req, res, next);
 };
+
+/**
+ * 6. GET /api/mobile/assessments/classes
+ * Class list of the school whose teacher is logged in.
+ * Supports:
+ * - JWT authentication (req.user.primary_udise, req.user.id)
+ * - Optional query overrides: ?school_udise=... or ?teacher_id=... or ?username=...
+ * - Returns school metadata, teacher info, and list of classes with student count & test availability.
+ */
+exports.getTeacherSchoolClasses = async (req, res, next) => {
+  try {
+    let teacherId = req.user?.id || req.query.teacher_id || req.query.user_id;
+    let schoolUdise = req.user?.primary_udise || req.query.school_udise || req.query.udise;
+    let username = req.user?.username || req.query.username;
+
+    let teacher = null;
+
+    // 1. Resolve teacher info if available
+    if (teacherId || username) {
+      const uRes = await pool.query(
+        `SELECT id, username, full_name, primary_udise, role 
+         FROM sd_users 
+         WHERE (id::text = $1 OR username = $2) AND is_active = true 
+         LIMIT 1`,
+        [teacherId ? String(teacherId) : null, username || null]
+      );
+      if (uRes.rows.length > 0) {
+        teacher = uRes.rows[0];
+        if (!schoolUdise) {
+          schoolUdise = teacher.primary_udise;
+        }
+      }
+    } else if (req.user) {
+      teacher = {
+        id: req.user.id,
+        username: req.user.username,
+        full_name: req.user.full_name,
+        primary_udise: req.user.primary_udise,
+        role: req.user.role,
+      };
+    }
+
+    // 2. Resolve school UDISE fallback
+    if (!schoolUdise) {
+      const sFallback = await pool.query(
+        `SELECT primary_udise FROM sd_users WHERE role = 'TEACHER' AND primary_udise IS NOT NULL LIMIT 1`
+      );
+      schoolUdise = sFallback.rows.length > 0 ? sFallback.rows[0].primary_udise : 22050904705;
+    }
+
+    // 3. Fetch school metadata
+    const schoolRes = await pool.query(
+      `SELECT udise_code, school_name, cluster_cd, cluster_name, block_cd, block_name, 
+              district_cd, district_name, school_type, school_management, hos_name
+       FROM sd_schools 
+       WHERE udise_code = $1`,
+      [schoolUdise]
+    );
+
+    const school = schoolRes.rows[0] || {
+      udise_code: Number(schoolUdise),
+      school_name: `Government School (${schoolUdise})`,
+      cluster_name: 'Raipur Cluster',
+      block_name: 'Raipur Urban',
+      district_name: 'Raipur',
+      school_type: 'Government',
+    };
+
+    // 4. Fetch teacher's specifically assigned classes
+    const assignedClassIds = new Set();
+    if (teacher?.id) {
+      const assignRes = await pool.query(
+        `SELECT class_id FROM sd_teacher_assignments 
+         WHERE user_id = $1 AND school_udise = $2 AND is_active = true`,
+        [teacher.id, schoolUdise]
+      );
+      assignRes.rows.forEach((r) => assignedClassIds.add(Number(r.class_id)));
+    }
+
+    // 5. Fetch all active classes with student counts in this school and available tests
+    const classesRes = await pool.query(
+      `SELECT 
+        c.id AS class_id,
+        c.class_num AS class_no,
+        c.class_name,
+        CASE 
+          WHEN c.class_num = 1 THEN 'कक्षा 1'
+          WHEN c.class_num = 2 THEN 'कक्षा 2'
+          WHEN c.class_num = 3 THEN 'कक्षा 3'
+          WHEN c.class_num = 4 THEN 'कक्षा 4'
+          WHEN c.class_num = 5 THEN 'कक्षा 5'
+          WHEN c.class_num = 6 THEN 'कक्षा 6'
+          WHEN c.class_num = 7 THEN 'कक्षा 7'
+          WHEN c.class_num = 8 THEN 'कक्षा 8'
+          WHEN c.class_num = 9 THEN 'कक्षा 9'
+          WHEN c.class_num = 10 THEN 'कक्षा 10'
+          WHEN c.class_num = 11 THEN 'कक्षा 11'
+          WHEN c.class_num = 12 THEN 'कक्षा 12'
+          ELSE CONCAT('कक्षा ', c.class_num)
+        END AS class_name_hi,
+        COALESCE(st.student_count, 0) AS total_students,
+        COALESCE(tp.test_count, 0) AS available_tests_count
+      FROM sd_classes c
+      LEFT JOIN (
+        SELECT class_id, COUNT(id) AS student_count
+        FROM sd_students
+        WHERE school_udise = $1 AND is_active = true
+        GROUP BY class_id
+      ) st ON st.class_id = c.id
+      LEFT JOIN (
+        SELECT class_no, COUNT(id) AS test_count
+        FROM sd_assessment_papers
+        WHERE is_active = true
+        GROUP BY class_no
+      ) tp ON tp.class_no = c.class_num
+      WHERE c.is_active = true
+      ORDER BY c.class_num ASC`,
+      [schoolUdise]
+    );
+
+    const formattedClasses = classesRes.rows.map((row) => ({
+      class_id: Number(row.class_id),
+      class_no: Number(row.class_no),
+      class_name: row.class_name,
+      class_name_hi: row.class_name_hi,
+      total_students: Number(row.total_students),
+      is_assigned: assignedClassIds.has(Number(row.class_id)) || assignedClassIds.has(Number(row.class_no)),
+      has_mock_tests: Number(row.available_tests_count) > 0,
+      available_tests_count: Number(row.available_tests_count),
+    }));
+
+    return res.json({
+      success: true,
+      message: "Class list retrieved successfully for teacher's school",
+      school: {
+        udise_code: Number(school.udise_code),
+        school_name: school.school_name,
+        cluster_name: school.cluster_name,
+        block_name: school.block_name,
+        district_name: school.district_name,
+        school_type: school.school_type,
+      },
+      teacher: {
+        id: teacher?.id ? Number(teacher.id) : null,
+        username: teacher?.username || null,
+        name: teacher?.full_name || null,
+        role: teacher?.role || 'TEACHER',
+        assigned_classes_count: assignedClassIds.size,
+      },
+      total_classes: formattedClasses.length,
+      classes: formattedClasses,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * 7. GET /api/mobile/assessments/students
+ * OR GET /api/mobile/assessments/classes/:classId/students
+ * OR GET /api/mobile/assessments/class/:classNo/students
+ * Students list of selected class.
+ * Query params: class / class_id / class_no, school_udise, search, gender
+ */
+exports.getClassStudents = async (req, res, next) => {
+  try {
+    const rawClass = req.params.classId || req.params.classNo || req.query.class || req.query.class_id || req.query.class_no;
+    const { search, gender } = req.query;
+
+    let targetClassNum = rawClass ? parseInt(String(rawClass).replace(/\D/g, ''), 10) : 1;
+    if (isNaN(targetClassNum) || targetClassNum <= 0) targetClassNum = 1;
+
+    // Resolve class row
+    const classRes = await pool.query(
+      `SELECT id, class_num, class_name FROM sd_classes WHERE class_num = $1 OR id = $1 LIMIT 1`,
+      [targetClassNum]
+    );
+
+    const classRow = classRes.rows[0] || {
+      id: targetClassNum,
+      class_num: targetClassNum,
+      class_name: `Class ${targetClassNum}`,
+    };
+
+    // Resolve school UDISE
+    let schoolUdise = req.user?.primary_udise || req.query.school_udise || req.query.udise;
+    if (!schoolUdise && (req.query.teacher_id || req.user?.id)) {
+      const tId = req.query.teacher_id || req.user.id;
+      const tRes = await pool.query('SELECT primary_udise FROM sd_users WHERE id = $1', [tId]);
+      if (tRes.rows.length) schoolUdise = tRes.rows[0].primary_udise;
+    }
+    if (!schoolUdise) {
+      schoolUdise = 22050904705;
+    }
+
+    // Fetch school info
+    const sRes = await pool.query(
+      `SELECT udise_code, school_name FROM sd_schools WHERE udise_code = $1`,
+      [schoolUdise]
+    );
+    const school = sRes.rows[0] || { udise_code: schoolUdise, school_name: `School ${schoolUdise}` };
+
+    // Query students
+    let query = `
+      SELECT 
+        s.id,
+        s.roll_number,
+        s.student_name,
+        s.gender,
+        TO_CHAR(s.dob, 'YYYY-MM-DD') AS dob,
+        s.guardian_name,
+        s.is_active,
+        s.class_id,
+        c.class_num AS class_no,
+        c.class_name,
+        COALESCE(sub.sub_count, 0) AS mock_tests_taken,
+        sub.last_percentage AS last_score_percentage,
+        sub.last_date AS last_test_date
+      FROM sd_students s
+      JOIN sd_classes c ON s.class_id = c.id
+      LEFT JOIN (
+        SELECT 
+          student_id,
+          COUNT(id) AS sub_count,
+          MAX(percentage) AS last_percentage,
+          MAX(submitted_at) AS last_date
+        FROM sd_student_assessment_submissions
+        GROUP BY student_id
+      ) sub ON sub.student_id = s.id::text
+      WHERE s.school_udise = $1 
+        AND (s.class_id = $2 OR c.class_num = $3)
+        AND s.is_active = true
+    `;
+    const params = [schoolUdise, classRow.id, classRow.class_num];
+
+    if (gender && ['M', 'F', 'O'].includes(gender.toUpperCase())) {
+      params.push(gender.toUpperCase());
+      query += ` AND s.gender = $${params.length}`;
+    }
+
+    if (search && search.trim()) {
+      params.push(`%${search.trim()}%`);
+      const rollNumSearch = parseInt(search.trim(), 10);
+      if (!isNaN(rollNumSearch)) {
+        params.push(rollNumSearch);
+        query += ` AND (s.student_name ILIKE $${params.length - 1} OR s.roll_number = $${params.length})`;
+      } else {
+        query += ` AND s.student_name ILIKE $${params.length}`;
+      }
+    }
+
+    query += ` ORDER BY s.roll_number ASC, s.student_name ASC`;
+
+    const studentsRes = await pool.query(query, params);
+
+    // If this specific school had 0 students in this class, provide fallback from statewide students
+    let students = studentsRes.rows;
+    if (students.length === 0 && !search) {
+      const fallbackRes = await pool.query(
+        `SELECT 
+          s.id,
+          s.roll_number,
+          s.student_name,
+          s.gender,
+          TO_CHAR(s.dob, 'YYYY-MM-DD') AS dob,
+          s.guardian_name,
+          s.is_active,
+          s.class_id,
+          c.class_num AS class_no,
+          c.class_name,
+          0 AS mock_tests_taken,
+          NULL AS last_score_percentage,
+          NULL AS last_test_date
+        FROM sd_students s
+        JOIN sd_classes c ON s.class_id = c.id
+        WHERE (s.class_id = $1 OR c.class_num = $2) AND s.is_active = true
+        ORDER BY s.roll_number ASC
+        LIMIT 20`,
+        [classRow.id, classRow.class_num]
+      );
+      if (fallbackRes.rows.length > 0) {
+        students = fallbackRes.rows;
+      }
+    }
+
+    const formattedStudents = students.map((s) => ({
+      id: Number(s.id),
+      roll_number: Number(s.roll_number),
+      student_name: s.student_name,
+      gender: s.gender,
+      dob: s.dob,
+      guardian_name: s.guardian_name,
+      is_active: s.is_active,
+      class_no: Number(s.class_no || classRow.class_num),
+      class_name: s.class_name || classRow.class_name,
+      mock_tests_taken: Number(s.mock_tests_taken || 0),
+      last_score_percentage: s.last_score_percentage ? Number(s.last_score_percentage) : null,
+      last_test_date: s.last_test_date || null,
+    }));
+
+    return res.json({
+      success: true,
+      message: `Retrieved ${formattedStudents.length} students for Class ${classRow.class_num}`,
+      class: {
+        class_id: Number(classRow.id),
+        class_no: Number(classRow.class_num),
+        class_name: classRow.class_name,
+        class_name_hi: `कक्षा ${classRow.class_num}`,
+      },
+      school: {
+        udise_code: Number(school.udise_code),
+        school_name: school.school_name,
+      },
+      total_students: formattedStudents.length,
+      students: formattedStudents,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * 8. GET /api/mobile/assessments/subjects
+ * OR GET /api/mobile/assessments/classes/:classId/subjects
+ * OR GET /api/mobile/assessments/class/:classNo/subjects
+ * Subject list of selected class with mock test availability.
+ */
+exports.getClassSubjects = async (req, res, next) => {
+  try {
+    const rawClass = req.params.classId || req.params.classNo || req.query.class || req.query.class_id || req.query.class_no;
+    let targetClassNum = rawClass ? parseInt(String(rawClass).replace(/\D/g, ''), 10) : 1;
+    if (isNaN(targetClassNum) || targetClassNum <= 0) targetClassNum = 1;
+
+    // Define standard subject curricula per class level in Chhattisgarh
+    let baseSubjects = [];
+    if (targetClassNum <= 2) {
+      // Class 1 - 2
+      baseSubjects = [
+        { id: 1, code: 'HINDI', name: 'Hindi', name_hi: 'हिन्दी', icon: 'menu_book', color: '#f97316' },
+        { id: 2, code: 'ENG', name: 'English', name_hi: 'अंग्रेजी', icon: 'translate', color: '#0284c7' },
+        { id: 3, code: 'MATH', name: 'Mathematics', name_hi: 'गणित', icon: 'calculate', color: '#10b981' },
+      ];
+    } else if (targetClassNum <= 5) {
+      // Class 3 - 5
+      baseSubjects = [
+        { id: 1, code: 'HINDI', name: 'Hindi', name_hi: 'हिन्दी', icon: 'menu_book', color: '#f97316' },
+        { id: 2, code: 'ENG', name: 'English', name_hi: 'अंग्रेजी', icon: 'translate', color: '#0284c7' },
+        { id: 3, code: 'MATH', name: 'Mathematics', name_hi: 'गणित', icon: 'calculate', color: '#10b981' },
+        { id: 4, code: 'SCI', name: 'Science', name_hi: 'पर्यावरण अध्ययन (EVS)', icon: 'eco', color: '#8b5cf6' },
+      ];
+    } else {
+      // Class 6 - 12
+      baseSubjects = [
+        { id: 1, code: 'HINDI', name: 'Hindi', name_hi: 'हिन्दी', icon: 'menu_book', color: '#f97316' },
+        { id: 2, code: 'ENG', name: 'English', name_hi: 'अंग्रेजी', icon: 'translate', color: '#0284c7' },
+        { id: 3, code: 'MATH', name: 'Mathematics', name_hi: 'गणित', icon: 'calculate', color: '#10b981' },
+        { id: 4, code: 'SCI', name: 'Science', name_hi: 'विज्ञान', icon: 'science', color: '#06b6d4' },
+        { id: 5, code: 'SST', name: 'Social Science', name_hi: 'सामाजिक विज्ञान', icon: 'public', color: '#eab308' },
+        { id: 6, code: 'SANSKRIT', name: 'Sanskrit', name_hi: 'संस्कृत', icon: 'auto_stories', color: '#ec4899' },
+      ];
+    }
+
+    // Query active assessment papers for this class
+    const papersRes = await pool.query(
+      `SELECT id, paper_code, title, title_hi, subject, total_questions, total_marks, duration_minutes 
+       FROM sd_assessment_papers 
+       WHERE class_no = $1 AND is_active = true 
+       ORDER BY id ASC`,
+      [targetClassNum]
+    );
+
+    const papers = papersRes.rows;
+
+    // Map each subject with mock test paper details
+    const formattedSubjects = baseSubjects.map((sub) => {
+      // Find matching paper by subject name
+      const matchedPaper = papers.find((p) => {
+        const pSub = p.subject.toLowerCase();
+        const sName = sub.name.toLowerCase();
+        return pSub.includes(sName) || sName.includes(pSub) || (sub.code === 'SCI' && pSub.includes('science'));
+      });
+
+      if (matchedPaper) {
+        return {
+          id: sub.id,
+          code: sub.code,
+          name: sub.name,
+          name_hi: sub.name_hi,
+          icon: sub.icon,
+          color: sub.color,
+          has_mock_test: true,
+          paper_code: matchedPaper.paper_code,
+          paper_id: matchedPaper.id,
+          paper_title: matchedPaper.title,
+          paper_title_hi: matchedPaper.title_hi,
+          total_questions: Number(matchedPaper.total_questions || 10),
+          total_marks: Number(matchedPaper.total_marks || 20),
+          duration_minutes: Number(matchedPaper.duration_minutes || 30),
+          fetch_questions_url: `/api/mobile/assessments/paper?class=${targetClassNum}&subject=${encodeURIComponent(sub.name)}`,
+          direct_paper_url: `/api/mobile/assessments/paper/${matchedPaper.paper_code}`,
+        };
+      } else {
+        return {
+          id: sub.id,
+          code: sub.code,
+          name: sub.name,
+          name_hi: sub.name_hi,
+          icon: sub.icon,
+          color: sub.color,
+          has_mock_test: false,
+          paper_code: null,
+          paper_id: null,
+          paper_title: null,
+          paper_title_hi: null,
+          total_questions: null,
+          total_marks: null,
+          duration_minutes: null,
+          fetch_questions_url: `/api/mobile/assessments/paper?class=${targetClassNum}&subject=${encodeURIComponent(sub.name)}`,
+          direct_paper_url: null,
+        };
+      }
+    });
+
+    return res.json({
+      success: true,
+      message: `Subjects retrieved successfully for Class ${targetClassNum}`,
+      class: {
+        class_no: targetClassNum,
+        class_name: `Class ${targetClassNum}`,
+        class_name_hi: `कक्षा ${targetClassNum}`,
+      },
+      total_subjects: formattedSubjects.length,
+      available_tests_count: formattedSubjects.filter((s) => s.has_mock_test).length,
+      subjects: formattedSubjects,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+

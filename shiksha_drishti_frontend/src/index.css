@@ -20,7 +20,7 @@
   --danger: #ef4444;
   --bg: #f8fafc;
   --surface: #ffffff;
-  --border: rgba(226, 232, 240, 0.9);
+  --border: #e2e8f0;
   --text-primary: #0f172a;
   --text-secondary: #475569;
   --text-muted: #94a3b8;
@@ -173,3 +173,41 @@ a {
 /* ─── Utility Classes ───────────────────────────────────────────── */
 .full-width { width: 100% !important; }
 .no-select { user-select: none; }
+
+/* ─── VSK GIS Heatmap & Dashboard Utilities ──────────────────────── */
+.vsk-grid-map-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(320px, 1fr);
+  gap: 20px;
+  align-items: stretch;
+}
+
+@media (max-width: 1100px) {
+  .vsk-grid-map-panel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.glass-card-premium {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.05);
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.glass-card-premium:hover {
+  border-color: rgba(2, 132, 199, 0.3);
+  box-shadow: 0 8px 30px rgba(2, 132, 199, 0.08);
+}
+
+.spin {
+  animation: spin 1.2s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}

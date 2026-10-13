@@ -8,6 +8,9 @@ const {
   getStateQuestionAnalytics,
   getStateTeacherMatrix,
   getStateStudentPerformance,
+  getStateSubjectTrends,
+  getStatePromotionReadiness,
+  getStateSubmissionTracker,
 } = require('../controllers/state.controller');
 
 // All state routes require authentication
@@ -24,10 +27,13 @@ const stateRoleCheck = (req, res, next) => {
 
 router.use(stateRoleCheck);
 
-router.get('/overview',   getStateOverview);
-router.get('/districts',  getStateDistricts);
-router.get('/questions',  getStateQuestionAnalytics);
-router.get('/teachers',   getStateTeacherMatrix);
-router.get('/students',   asyncHandler(getStateStudentPerformance));
+router.get('/overview',             getStateOverview);
+router.get('/districts',            getStateDistricts);
+router.get('/questions',            getStateQuestionAnalytics);
+router.get('/teachers',             getStateTeacherMatrix);
+router.get('/students',             asyncHandler(getStateStudentPerformance));
+router.get('/subject-trends',       getStateSubjectTrends);
+router.get('/promotion-readiness',  getStatePromotionReadiness);
+router.get('/submission-tracker',   getStateSubmissionTracker);
 
 module.exports = router;

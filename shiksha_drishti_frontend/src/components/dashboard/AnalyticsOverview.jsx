@@ -479,30 +479,31 @@ export default function AnalyticsOverview() {
           p: { xs: 2.5, sm: 3 },
           mb: 2.5,
           borderRadius: 3.5,
-          background: 'linear-gradient(135deg, #091a3c 0%, #0f3460 50%, #0284c7 100%)',
-          color: '#ffffff',
+          background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 50%, #eff6ff 100%)',
+          color: '#0f172a',
           position: 'relative',
           overflow: 'hidden',
-          boxShadow: '0 12px 40px rgba(15, 52, 96, 0.22)',
+          border: '1px solid #e2e8f0',
+          boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03), 0 10px 25px -5px rgba(2, 132, 199, 0.05)',
         }}>
           {/* Ambient Glow Orbs */}
-          <Box sx={{ position: 'absolute', right: -40, top: -40, width: 220, height: 220, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', pointerEvents: 'none' }} />
-          <Box sx={{ position: 'absolute', right: 90, bottom: -60, width: 180, height: 180, borderRadius: '50%', background: 'rgba(2,132,199,0.15)', pointerEvents: 'none' }} />
+          <Box sx={{ position: 'absolute', right: -40, top: -40, width: 220, height: 220, borderRadius: '50%', background: 'radial-gradient(circle, rgba(2,132,199,0.08) 0%, transparent 70%)', pointerEvents: 'none' }} />
+          <Box sx={{ position: 'absolute', right: 90, bottom: -60, width: 180, height: 180, borderRadius: '50%', background: 'radial-gradient(circle, rgba(99,102,241,0.05) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
           <Box sx={{ position: 'relative', zIndex: 1 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, flexWrap: 'wrap' }}>
-              <IconButton size="small" onClick={() => navigate('/dashboard')} sx={{ color: '#93c5fd', background: 'rgba(255,255,255,0.1)', '&:hover': { background: 'rgba(255,255,255,0.2)' } }}>
+              <IconButton size="small" onClick={() => navigate('/dashboard')} sx={{ color: '#475569', background: '#f1f5f9', border: '1px solid #e2e8f0', '&:hover': { background: '#e2e8f0' } }}>
                 <ArrowBack sx={{ fontSize: 18 }} />
               </IconButton>
               <Chip
                 label="Teacher Performance & Remedial Hub"
                 size="small"
-                sx={{ background: 'rgba(255, 255, 255, 0.15)', color: '#93c5fd', fontWeight: 800, fontSize: '0.68rem', borderRadius: 1.5 }}
+                sx={{ background: '#f0f9ff', color: '#0284c7', border: '1px solid #bae6fd', fontWeight: 800, fontSize: '0.68rem', borderRadius: 1.5 }}
               />
               <Chip
                 label="Live Learning Outcomes"
                 size="small"
-                sx={{ background: 'rgba(16,185,129,0.2)', color: '#a7f3d0', fontWeight: 800, fontSize: '0.68rem', borderRadius: 1.5 }}
+                sx={{ background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', fontWeight: 800, fontSize: '0.68rem', borderRadius: 1.5 }}
               />
             </Box>
 
@@ -512,10 +513,11 @@ export default function AnalyticsOverview() {
               lineHeight: 1.2,
               fontFamily: '"Plus Jakarta Sans", sans-serif',
               mb: 0.75,
+              color: '#0f172a',
             }}>
               Student Performance Analytics & Remedial Guidance
             </Typography>
-            <Typography sx={{ color: 'rgba(226, 232, 240, 0.9)', fontSize: '0.84rem', lineHeight: 1.5, maxWidth: 860 }}>
+            <Typography sx={{ color: '#64748b', fontSize: '0.84rem', lineHeight: 1.5, maxWidth: 860 }}>
               Real-time intelligence from entered assessment marks. Discover <strong>Class Average</strong>, identify <strong>Students Needing Attention</strong>, and access targeted <strong>DIKSHA remedial learning resources</strong>.
             </Typography>
           </Box>

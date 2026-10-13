@@ -28,6 +28,10 @@ import {
 } from 'recharts';
 import { stateApi } from '../../services/api';
 import AdminStudentPerformance from './AdminStudentPerformance';
+import StateHeatmapMap from './StateHeatmapMap';
+import SubjectTrendAnalysis from './SubjectTrendAnalysis';
+import ClassPromotionReadiness from './ClassPromotionReadiness';
+import TeacherSubmissionTracker from './TeacherSubmissionTracker';
 import { useAuth } from '../../context/AuthContext';
 import cgLogo from '../../assets/cglogo.png';
 import {
@@ -93,145 +97,124 @@ function StateKpiCard({ label, value, sub, color, gradientTo, icon, badge, onCli
     <motion.div {...stagger(delay)} style={{ height: '100%', width: '100%' }}>
       <Card
         elevation={0}
+        onClick={onClick}
         sx={{
-          p: 2,
+          p: 0,
           width: '100%',
           boxSizing: 'border-box',
           borderRadius: 3,
-          border: '1px solid #e2e8f0',
+          border: '1px solid rgba(226,232,240,0.8)',
           background: '#ffffff',
-          boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04), 0 2px 6px -1px rgba(15, 23, 42, 0.02)',
+          boxShadow: '0 1px 4px rgba(15,23,42,0.06)',
           height: '100%',
           display: 'flex',
           flexDirection: 'column',
-          justifyContent: 'space-between',
           position: 'relative',
           overflow: 'hidden',
-          transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+          cursor: onClick ? 'pointer' : 'default',
+          transition: 'all 0.22s cubic-bezier(0.4, 0, 0.2, 1)',
           '&:hover': {
             transform: 'translateY(-3px)',
-            borderColor: color,
-            boxShadow: `0 12px 28px -4px ${alpha(color, 0.16)}, 0 4px 12px -2px rgba(15, 23, 42, 0.04)`,
+            borderColor: `${color}55`,
+            boxShadow: `0 14px 32px -6px ${alpha(color, 0.18)}, 0 4px 12px rgba(15,23,42,0.04)`,
           },
         }}
       >
-        {/* Subtle Top Gradient Accent Bar */}
+        {/* Top accent stripe */}
         <Box sx={{
-          position: 'absolute', top: 0, left: 0, right: 0, height: 3.5,
+          height: 3, flexShrink: 0,
           background: `linear-gradient(90deg, ${color}, ${gradientTo || color})`,
         }} />
 
-        {/* Top Header: Icon & Badge */}
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.25, mt: 0.25 }}>
-          <Box
-            sx={{
-              width: 40,
-              height: 40,
-              borderRadius: 2.2,
-              background: `linear-gradient(135deg, ${color} 0%, ${gradientTo || color} 100%)`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: `0 4px 12px ${alpha(color, 0.28)}`,
-              color: '#ffffff',
-            }}
-          >
-            {icon}
+        <Box sx={{ p: 2.25, flex: 1, display: 'flex', flexDirection: 'column', gap: 0 }}>
+          {/* Icon row */}
+          <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 1.5 }}>
+            <Box sx={{
+              width: 44, height: 44,
+              borderRadius: 2.5,
+              background: `linear-gradient(135deg, ${color}18 0%, ${color}2a 100%)`,
+              border: `1px solid ${color}22`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: color,
+              flexShrink: 0,
+            }}>
+              {icon}
+            </Box>
+            {badge && (
+              <Chip
+                label={badge}
+                size="small"
+                sx={{
+                  background: alpha(color, 0.08),
+                  color: color,
+                  fontWeight: 800,
+                  height: 20,
+                  borderRadius: 1.5,
+                  border: `1px solid ${alpha(color, 0.22)}`,
+                  fontSize: '0.63rem',
+                  px: 0.25,
+                }}
+              />
+            )}
           </Box>
 
-          {badge && (
-            <Chip
-              label={badge}
-              size="small"
-              sx={{
-                background: alpha(color, 0.08),
-                color: color,
-                fontWeight: 800,
-                height: 22,
-                borderRadius: 1.5,
-                border: `1px solid ${alpha(color, 0.22)}`,
-                fontSize: '0.68rem',
-                px: 0.5,
-              }}
-            />
-          )}
-        </Box>
-
-        {/* Label */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.5 }}>
-          <Box sx={{ width: 6, height: 6, borderRadius: '50%', background: color }} />
+          {/* Label */}
           <Typography sx={{
-            fontSize: '0.72rem',
+            fontSize: '0.7rem',
             fontWeight: 700,
-            color: '#64748b',
+            color: '#94a3b8',
             textTransform: 'uppercase',
-            letterSpacing: '0.05em',
+            letterSpacing: '0.07em',
+            mb: 0.4,
+            lineHeight: 1,
           }}>
             {label}
           </Typography>
-        </Box>
 
-        {/* Big Metric Value */}
-        <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 1, mb: 0.75 }}>
+          {/* Big Value */}
           <Typography sx={{
-            fontSize: { xs: '1.6rem', sm: '1.85rem' },
-            fontWeight: 800,
+            fontSize: { xs: '1.55rem', sm: '1.75rem' },
+            fontWeight: 900,
             color: '#0f172a',
             lineHeight: 1.1,
-            letterSpacing: '-0.03em',
+            letterSpacing: '-0.04em',
             fontFamily: '"Plus Jakarta Sans", sans-serif',
+            mb: 0.75,
           }}>
             {value}
           </Typography>
-          {actionText && onClick && (
-            <Button
-              size="small"
-              variant="outlined"
-              onClick={onClick}
-              sx={{
-                fontSize: '0.68rem',
-                py: 0.2,
-                px: 1,
-                borderRadius: 1.5,
-                borderColor: alpha(color, 0.4),
-                color: color,
-                fontWeight: 700,
-                '&:hover': { background: alpha(color, 0.08), borderColor: color },
-              }}
-            >
-              {actionText}
-            </Button>
+
+          {/* Sub info */}
+          {sub && (
+            <Typography sx={{
+              fontSize: '0.7rem',
+              color: '#64748b',
+              fontWeight: 500,
+              lineHeight: 1.45,
+              mt: 'auto',
+              pt: 0.75,
+              borderTop: `1px solid ${color}15`,
+            }}>
+              {sub}
+            </Typography>
           )}
         </Box>
-
-        {/* Subtext info */}
-        {sub && (
-          <Typography sx={{
-            fontSize: '0.73rem',
-            color: '#64748b',
-            fontWeight: 500,
-            lineHeight: 1.4,
-            pt: 0.5,
-            borderTop: '1px dashed #f1f5f9',
-          }}>
-            {sub}
-          </Typography>
-        )}
       </Card>
     </motion.div>
   );
 }
 
 // ── Light Section Header ───────────────────────────────────────────────────────
-function LightSectionHeader({ icon, title, subtitle, action }) {
+function LightSectionHeader({ icon, title, subtitle, action, accentColor = '#0284c7' }) {
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap', gap: 1 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
         <Box sx={{
           width: 36, height: 36, borderRadius: 2,
-          background: 'linear-gradient(135deg, #0f3460, #0284c7)',
+          background: `linear-gradient(135deg, ${accentColor}22, ${accentColor}33)`,
+          border: `1px solid ${accentColor}22`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: '#ffffff', boxShadow: '0 2px 8px rgba(2, 132, 199, 0.2)',
+          color: accentColor,
         }}>
           {icon}
         </Box>
@@ -240,7 +223,7 @@ function LightSectionHeader({ icon, title, subtitle, action }) {
             {title}
           </Typography>
           {subtitle && (
-            <Typography sx={{ color: '#64748b', fontSize: '0.72rem', fontWeight: 500, mt: 0.25 }}>
+            <Typography sx={{ color: '#94a3b8', fontSize: '0.7rem', fontWeight: 500, mt: 0.2 }}>
               {subtitle}
             </Typography>
           )}
@@ -1106,8 +1089,8 @@ export default function StateDashboard() {
   useEffect(() => {
     const timer = setTimeout(() => {
       fetchAll();
-      if (activeTab === 5 || activeTab === 7) fetchQuestions();
-      if (activeTab === 6 || activeTab === 7) fetchTeachers();
+      if (activeTab === 9 || activeTab === 11) fetchQuestions();
+      if (activeTab === 10 || activeTab === 11) fetchTeachers();
     }, 200);
     return () => clearTimeout(timer);
   }, [fetchAll, fetchQuestions, fetchTeachers, activeTab]);
@@ -1116,7 +1099,7 @@ export default function StateDashboard() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const tab = parseInt(params.get('tab') || '0');
-    if (!isNaN(tab) && tab >= 0 && tab <= 7) setActiveTab(tab);
+    if (!isNaN(tab) && tab >= 0 && tab <= 11) setActiveTab(tab);
   }, []);
 
   // Count of active filters
@@ -1837,8 +1820,12 @@ export default function StateDashboard() {
 
   const tabs = [
     { label: 'State Overview',         icon: <PublicOutlined sx={{ fontSize: 18 }} /> },
+    { label: 'State GIS Heatmap',      icon: <MapOutlined sx={{ fontSize: 18 }} />, badge: 'Cartography' },
+    { label: 'Subject Trends',         icon: <TrendingUp sx={{ fontSize: 18 }} />, badge: 'Growth' },
+    { label: 'Promotion Readiness',    icon: <EmojiEvents sx={{ fontSize: 18 }} />, badge: 'Retention' },
+    { label: 'Submission Tracker',     icon: <AssignmentTurnedIn sx={{ fontSize: 18 }} />, badge: 'Compliance' },
     { label: 'Student Performance',    icon: <People sx={{ fontSize: 18 }} />, badge: 'State Analytics' },
-    { label: 'District League',        icon: <MapOutlined sx={{ fontSize: 18 }} /> },
+    { label: 'District League',        icon: <Layers sx={{ fontSize: 18 }} /> },
     { label: 'District Benchmarking',  icon: <CompareArrows sx={{ fontSize: 18 }} />, badge: 'Radar' },
     { label: 'Subject Diagnostics',    icon: <BarChart sx={{ fontSize: 18 }} /> },
     { label: 'Question Analytics',     icon: <Insights sx={{ fontSize: 18 }} />, badge: 'LO' },
@@ -1852,160 +1839,172 @@ export default function StateDashboard() {
       p: 0,
       display: 'flex',
       flexDirection: 'column',
-      gap: 2.5,
+      gap: 2,
       boxSizing: 'border-box',
     }}>
-      {/* ── Executive Hero Header Bar ────────────────────────────────────────── */}
+      {/* ── Premium Light Hero Header ────────────────────────────────── */}
       <motion.div {...fadeUp}>
         <Box
           sx={{
             p: { xs: 2.5, md: 3 },
             borderRadius: 3.5,
-            background: 'linear-gradient(135deg, #0f3460 0%, #17467d 45%, #0284c7 100%)',
-            boxShadow: '0 10px 30px -5px rgba(15, 52, 96, 0.3), 0 4px 12px -2px rgba(2, 132, 199, 0.2)',
-            color: '#ffffff',
+            background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 50%, #eff6ff 100%)',
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 1px 3px rgba(15,23,42,0.03), 0 10px 25px -5px rgba(2,132,199,0.06)',
+            color: '#0f172a',
             position: 'relative',
             overflow: 'hidden',
           }}
         >
-          {/* Decorative ambient spheres */}
-          <Box sx={{ position: 'absolute', top: -40, right: -40, width: 220, height: 220, borderRadius: '50%', background: 'rgba(255,255,255,0.06)', pointerEvents: 'none' }} />
-          <Box sx={{ position: 'absolute', bottom: -30, left: '35%', width: 160, height: 160, borderRadius: '50%', background: 'rgba(255,255,255,0.04)', pointerEvents: 'none' }} />
+          {/* Decorative subtle ambient glows */}
+          <Box sx={{
+            position: 'absolute', top: -60, right: -60,
+            width: 260, height: 260, borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(2,132,199,0.08) 0%, transparent 70%)',
+            pointerEvents: 'none',
+          }} />
+          <Box sx={{
+            position: 'absolute', bottom: -50, left: '25%',
+            width: 200, height: 200, borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(99,102,241,0.06) 0%, transparent 70%)',
+            pointerEvents: 'none',
+          }} />
 
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2, position: 'relative' }}>
-            {/* Title & Badge */}
+            {/* Title */}
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <Box sx={{
-                width: 56, height: 56, borderRadius: 2.5,
-                background: 'rgba(255,255,255,0.14)',
-                border: '1px solid rgba(255,255,255,0.25)',
+                width: 52, height: 52, borderRadius: 2.5,
+                background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+                boxShadow: '0 4px 14px rgba(2,132,199,0.28)',
                 flexShrink: 0,
               }}>
-                <AdminPanelSettings sx={{ color: '#ffffff', fontSize: 32 }} />
+                <AdminPanelSettings sx={{ color: '#ffffff', fontSize: 28 }} />
               </Box>
               <Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, flexWrap: 'wrap', mb: 0.5 }}>
                   <Typography sx={{
-                    fontSize: { xs: '1.25rem', sm: '1.55rem', md: '1.75rem' },
+                    fontSize: { xs: '1.15rem', sm: '1.35rem', md: '1.55rem' },
                     fontWeight: 900,
-                    color: '#ffffff',
+                    color: '#0f172a',
                     fontFamily: '"Plus Jakarta Sans", sans-serif',
-                    letterSpacing: '-0.025em',
-                    lineHeight: 1.15,
+                    letterSpacing: '-0.02em',
+                    lineHeight: 1.2,
                   }}>
                     Chhattisgarh State Education Intelligence Command Center
                   </Typography>
-                  <Chip
-                    label="LIVE TELEMETRY"
-                    size="small"
-                    sx={{
+                  <Box sx={{
+                    display: 'flex', alignItems: 'center', gap: 0.6,
+                    px: 1.2, py: 0.35, borderRadius: 20, flexShrink: 0,
+                    background: '#ecfdf5',
+                    border: '1px solid #a7f3d0',
+                    boxShadow: '0 1px 2px rgba(16,185,129,0.06)',
+                  }}>
+                    <Box sx={{
+                      width: 6, height: 6, borderRadius: '50%',
                       background: '#10b981',
-                      color: '#ffffff',
-                      fontWeight: 800,
-                      fontSize: '0.66rem',
-                      height: 22,
-                      boxShadow: '0 0 12px rgba(16, 185, 129, 0.6)',
-                      animation: 'pulse 2s infinite',
-                    }}
-                  />
+                      boxShadow: '0 0 6px #10b981',
+                    }} />
+                    <Typography sx={{ color: '#047857', fontSize: '0.64rem', fontWeight: 800, letterSpacing: '0.06em' }}>
+                      LIVE TELEMETRY
+                    </Typography>
+                  </Box>
                 </Box>
-                <Typography sx={{ color: 'rgba(255,255,255,0.82)', fontSize: { xs: '0.78rem', sm: '0.85rem' }, fontWeight: 500 }}>
+                <Typography sx={{ color: '#64748b', fontSize: { xs: '0.75rem', sm: '0.82rem' }, fontWeight: 500 }}>
                   Samagra Shiksha · State Strategic Dashboard · Academic Year 2026–27 · Chhattisgarh
                 </Typography>
               </Box>
             </Box>
 
-            {/* Quick Actions (TV Kiosk, Export, Refresh) */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+            {/* Actions */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, flexWrap: 'wrap' }}>
               <Button
-                variant="contained"
+                variant="outlined"
                 onClick={() => setIsTvKioskOpen(true)}
-                startIcon={<Tv sx={{ fontSize: 18 }} />}
+                startIcon={<Tv sx={{ fontSize: 17 }} />}
                 sx={{
-                  background: 'rgba(255,255,255,0.18)',
-                  color: '#ffffff',
-                  fontWeight: 700,
-                  fontSize: '0.8rem',
-                  borderRadius: 2,
-                  px: 2,
-                  py: 0.8,
-                  backdropFilter: 'blur(8px)',
-                  border: '1px solid rgba(255,255,255,0.3)',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                  '&:hover': { background: 'rgba(255,255,255,0.28)' },
+                  background: '#ffffff',
+                  color: '#334155',
+                  fontWeight: 700, fontSize: '0.78rem',
+                  borderRadius: 2.5, px: 2, py: 0.75,
+                  border: '1px solid #cbd5e1',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+                  textTransform: 'none',
+                  '&:hover': { background: '#f8fafc', borderColor: '#94a3b8' },
                 }}
               >
-                TV Kiosk Mode
+                TV Kiosk
               </Button>
 
               <Button
                 variant="contained"
-                onClick={() => setActiveTab(7)}
-                startIcon={<Download sx={{ fontSize: 18 }} />}
+                onClick={() => setActiveTab(11)}
+                startIcon={<Download sx={{ fontSize: 17 }} />}
                 sx={{
-                  background: '#ffffff',
-                  color: '#0f3460',
-                  fontWeight: 800,
-                  fontSize: '0.8rem',
-                  borderRadius: 2,
-                  px: 2,
-                  py: 0.8,
-                  boxShadow: '0 4px 14px rgba(0,0,0,0.15)',
-                  '&:hover': { background: '#f1f5f9' },
+                  background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                  color: '#ffffff',
+                  fontWeight: 800, fontSize: '0.78rem',
+                  borderRadius: 2.5, px: 2.2, py: 0.8,
+                  boxShadow: '0 4px 14px rgba(2,132,199,0.25)',
+                  textTransform: 'none',
+                  '&:hover': { background: 'linear-gradient(135deg, #0369a1 0%, #075985 100%)' },
                 }}
               >
-                Report Download Center
+                Reports
               </Button>
 
               <Tooltip title="Refresh State Telemetry">
                 <IconButton
                   onClick={fetchAll}
                   sx={{
-                    background: 'rgba(255,255,255,0.15)',
-                    color: '#ffffff',
-                    border: '1px solid rgba(255,255,255,0.25)',
-                    borderRadius: 2,
-                    p: 1,
-                    '&:hover': { background: 'rgba(255,255,255,0.3)' },
+                    background: '#ffffff',
+                    color: '#64748b',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: 2, p: 0.9,
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+                    '&:hover': { background: '#f1f5f9', color: '#0f172a' },
                   }}
                 >
-                  <Refresh fontSize="small" />
+                  <Refresh sx={{ fontSize: 18 }} />
                 </IconButton>
               </Tooltip>
             </Box>
           </Box>
 
-          {/* Quick Metrics Bar at Bottom of Hero */}
+          {/* Stats ticker */}
           <Box sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: { xs: 1, sm: 2 },
-            mt: 2.5,
-            pt: 2,
-            borderTop: '1px solid rgba(255,255,255,0.15)',
+            display: 'flex', alignItems: 'center',
+            gap: { xs: 1, sm: 1.5 },
+            mt: 2.5, pt: 2,
+            borderTop: '1px solid #e2e8f0',
             flexWrap: 'wrap',
           }}>
             {[
-              { label: 'Districts', val: filteredKpis.total_districts || 6 },
-              { label: 'Blocks', val: filteredKpis.total_blocks || 20 },
-              { label: 'Clusters', val: filteredKpis.total_clusters || 67 },
-              { label: 'Schools', val: (filteredKpis.total_schools || 0).toLocaleString() },
-              { label: 'Students Evaluated', val: (filteredKpis.evaluated_students || filteredKpis.total_students || 0).toLocaleString() },
-              { label: 'Average Score', val: `${filteredKpis.state_avg_score || 0}%` },
-              { label: 'Pass Rate', val: `${filteredKpis.pass_rate_pct || 0}%` },
+              { label: 'Districts', val: filteredKpis.total_districts || 33, color: '#0284c7' },
+              { label: 'Blocks', val: filteredKpis.total_blocks || 166, color: '#475569' },
+              { label: 'Clusters', val: filteredKpis.total_clusters || 556, color: '#475569' },
+              { label: 'Schools', val: (filteredKpis.total_schools || 0).toLocaleString(), color: '#0f172a' },
+              { label: 'Students Evaluated', val: (filteredKpis.evaluated_students || filteredKpis.total_students || 0).toLocaleString(), color: '#0f172a' },
+              { label: 'Average Score', val: `${filteredKpis.state_avg_score || 0}%`, color: '#0284c7' },
+              { label: 'Pass Rate', val: `${filteredKpis.pass_rate_pct || 0}%`, color: '#10b981' },
             ].map((stat, i) => (
               <Box key={i} sx={{
-                px: 1.6, py: 0.6, borderRadius: 1.8,
-                background: 'rgba(255,255,255,0.1)',
-                border: '1px solid rgba(255,255,255,0.16)',
-                backdropFilter: 'blur(6px)',
+                px: 1.75, py: 0.7, borderRadius: 2,
+                background: '#ffffff',
+                border: '1px solid #e2e8f0',
+                boxShadow: '0 1px 3px rgba(15,23,42,0.03)',
+                transition: 'all 0.15s ease',
+                '&:hover': {
+                  borderColor: '#cbd5e1',
+                  boxShadow: '0 3px 8px rgba(15,23,42,0.06)',
+                  transform: 'translateY(-1px)',
+                }
               }}>
-                <Typography sx={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.64rem', fontWeight: 700, textTransform: 'uppercase' }}>
+                <Typography sx={{ color: '#64748b', fontSize: '0.62rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
                   {stat.label}
                 </Typography>
-                <Typography sx={{ color: '#ffffff', fontSize: '0.95rem', fontWeight: 800 }}>
+                <Typography sx={{ color: stat.color, fontSize: '0.96rem', fontWeight: 900, letterSpacing: '-0.02em', fontFamily: '"Plus Jakarta Sans", sans-serif' }}>
                   {stat.val}
                 </Typography>
               </Box>
@@ -2392,60 +2391,81 @@ export default function StateDashboard() {
         />
       </Box>
 
-      {/* ── Modern Navigation Tabs Bar ────────────────────────────────────────── */}
+      {/* ── Clean Light Navigation Tabs Bar ─────────────────────────────────── */}
       <motion.div {...stagger(1)}>
-        <Card
-          elevation={0}
+        <Box
           sx={{
             background: '#ffffff',
             borderRadius: 3,
             border: '1px solid #e2e8f0',
-            boxShadow: '0 1px 3px rgba(15,23,42,0.04)',
+            boxShadow: '0 1px 4px rgba(15,23,42,0.04), 0 4px 16px rgba(15,23,42,0.03)',
             overflow: 'hidden',
           }}
         >
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2, flexWrap: 'wrap', gap: 1.5 }}>
-            <Tabs
-              value={activeTab}
-              onChange={(_, v) => setActiveTab(v)}
-              variant="scrollable"
-              scrollButtons="auto"
-              sx={{
-                '& .MuiTab-root': {
-                  color: '#64748b',
-                  fontWeight: 700,
-                  fontSize: '0.82rem',
-                  minHeight: 56,
-                  py: 1.5,
-                  px: 2.5,
-                  gap: 1,
-                  textTransform: 'none',
-                  transition: 'all 0.2s ease',
-                  '&:hover': { color: '#0f3460' },
+          <Tabs
+            value={activeTab}
+            onChange={(_, v) => setActiveTab(v)}
+            variant="scrollable"
+            scrollButtons="auto"
+            sx={{
+              px: 1,
+              '& .MuiTab-root': {
+                color: '#64748b',
+                fontWeight: 600,
+                fontSize: '0.8rem',
+                minHeight: 52,
+                py: 1.25,
+                px: 2,
+                textTransform: 'none',
+                transition: 'all 0.15s ease',
+                letterSpacing: '0.01em',
+                '&:hover': {
+                  color: '#0f3460',
+                  background: '#f8fafc',
                 },
-                '& .Mui-selected': {
-                  color: '#0284c7 !important',
-                  fontWeight: 800,
-                },
-                '& .MuiTabs-indicator': {
-                  background: 'linear-gradient(90deg, #0f3460, #0284c7)',
-                  height: 3.5,
-                  borderRadius: '3px 3px 0 0',
-                },
-              }}
-            >
-              {tabs.map((t, i) => (
-                <Tab
-                  key={i}
-                  label={t.label}
-                  icon={t.icon}
-                  iconPosition="start"
-                  disableRipple
-                />
-              ))}
-            </Tabs>
-          </Box>
-        </Card>
+              },
+              '& .Mui-selected': {
+                color: '#0284c7 !important',
+                fontWeight: 800,
+              },
+              '& .MuiTabs-indicator': {
+                background: 'linear-gradient(90deg, #0f3460, #0284c7)',
+                height: 3,
+                borderRadius: '3px 3px 0 0',
+              },
+            }}
+          >
+            {tabs.map((t, i) => (
+              <Tab
+                key={i}
+                label={
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                    <span>{t.label}</span>
+                    {t.badge && (
+                      <Box sx={{
+                        px: 0.75, py: 0.1, borderRadius: 1,
+                        background: activeTab === i ? '#e0f2fe' : '#f1f5f9',
+                        fontSize: '0.58rem',
+                        fontWeight: 800,
+                        color: activeTab === i ? '#0284c7' : '#94a3b8',
+                        letterSpacing: '0.04em',
+                        lineHeight: 1.5,
+                        textTransform: 'uppercase',
+                        border: activeTab === i ? '1px solid #bae6fd' : '1px solid #e2e8f0',
+                        flexShrink: 0,
+                      }}>
+                        {t.badge}
+                      </Box>
+                    )}
+                  </Box>
+                }
+                icon={<Box sx={{ color: activeTab === i ? '#0284c7' : '#94a3b8', display: 'flex' }}>{t.icon}</Box>}
+                iconPosition="start"
+                disableRipple
+              />
+            ))}
+          </Tabs>
+        </Box>
       </motion.div>
 
       {/* ════════════════════════════════════════════════════════════════════ */}
@@ -2454,6 +2474,14 @@ export default function StateDashboard() {
       <AnimatePresence mode="wait">
         {activeTab === 0 && (
           <motion.div key="tab0" {...fadeUp} style={{ display: 'flex', flexDirection: 'column', gap: 24, width: '100%' }}>
+
+            {/* ── State GIS 2D Vector Heatmap (Tier 1 Core Monitoring) ── */}
+            <StateHeatmapMap
+              districtData={filteredDistricts || districts}
+              selectedDistrict={districtFilter}
+              onSelectDistrict={(dist) => setDistrictFilter(dist)}
+              loading={loading}
+            />
 
             {/* Row 1: Grade Distribution & District Performance Chart */}
             <Box sx={{
@@ -2862,18 +2890,59 @@ export default function StateDashboard() {
         )}
 
         {/* ════════════════════════════════════════════════════════════════════ */}
-        {/* TAB 1: State Student Performance Analytics (Macro & Micro Insights) */}
+        {/* TAB 1: Dedicated State GIS Heatmap */}
         {/* ════════════════════════════════════════════════════════════════════ */}
         {activeTab === 1 && (
-          <motion.div key="tab1" {...fadeUp} style={{ width: '100%' }}>
+          <motion.div key="tab1-gis" {...fadeUp} style={{ width: '100%' }}>
+            <StateHeatmapMap
+              districtData={filteredDistricts || districts}
+              selectedDistrict={districtFilter}
+              onSelectDistrict={(dist) => setDistrictFilter(dist)}
+              loading={loading}
+            />
+          </motion.div>
+        )}
+
+        {/* ════════════════════════════════════════════════════════════════════ */}
+        {/* TAB 2: Subject-Wise Trend & Mastery Analysis */}
+        {/* ════════════════════════════════════════════════════════════════════ */}
+        {activeTab === 2 && (
+          <motion.div key="tab2-trends" {...fadeUp} style={{ width: '100%' }}>
+            <SubjectTrendAnalysis districtFilter={districtFilter} classFilter={classFilter} />
+          </motion.div>
+        )}
+
+        {/* ════════════════════════════════════════════════════════════════════ */}
+        {/* TAB 3: Class Promotion & Academic Retention Readiness */}
+        {/* ════════════════════════════════════════════════════════════════════ */}
+        {activeTab === 3 && (
+          <motion.div key="tab3-promo" {...fadeUp} style={{ width: '100%' }}>
+            <ClassPromotionReadiness districtFilter={districtFilter} classFilter={classFilter} />
+          </motion.div>
+        )}
+
+        {/* ════════════════════════════════════════════════════════════════════ */}
+        {/* TAB 4: Teacher Submission & Compliance Tracker */}
+        {/* ════════════════════════════════════════════════════════════════════ */}
+        {activeTab === 4 && (
+          <motion.div key="tab4-submit" {...fadeUp} style={{ width: '100%' }}>
+            <TeacherSubmissionTracker districtFilter={districtFilter} />
+          </motion.div>
+        )}
+
+        {/* ════════════════════════════════════════════════════════════════════ */}
+        {/* TAB 5: State Student Performance Analytics (Macro & Micro Insights) */}
+        {/* ════════════════════════════════════════════════════════════════════ */}
+        {activeTab === 5 && (
+          <motion.div key="tab5" {...fadeUp} style={{ width: '100%' }}>
             <AdminStudentPerformance filterParams={filterParams} />
           </motion.div>
         )}
 
         {/* ════════════════════════════════════════════════════════════════════ */}
-        {/* TAB 2: District League Table */}
+        {/* TAB 6: District League Table */}
         {/* ════════════════════════════════════════════════════════════════════ */}
-        {activeTab === 2 && (
+        {activeTab === 6 && (
           <motion.div key="tab1" {...fadeUp} style={{ display: 'flex', flexDirection: 'column', gap: 24, width: '100%' }}>
             <LightCard>
               <LightSectionHeader
@@ -3028,9 +3097,9 @@ export default function StateDashboard() {
         )}
 
         {/* ════════════════════════════════════════════════════════════════════ */}
-        {/* TAB 3: Head-to-Head District Comparative Benchmark (Radar Matrix) */}
+        {/* TAB 7: Head-to-Head District Comparative Benchmark (Radar Matrix) */}
         {/* ════════════════════════════════════════════════════════════════════ */}
-        {activeTab === 3 && (
+        {activeTab === 7 && (
           <motion.div key="tab2" {...fadeUp} style={{ display: 'flex', flexDirection: 'column', gap: 24, width: '100%' }}>
 
             {/* ── District Selector & Battle Bar ─────────────────────────────── */}
@@ -3659,9 +3728,9 @@ export default function StateDashboard() {
         )}
 
         {/* ════════════════════════════════════════════════════════════════════ */}
-        {/* TAB 4: Subject Diagnostics */}
+        {/* TAB 8: Subject Diagnostics */}
         {/* ════════════════════════════════════════════════════════════════════ */}
-        {activeTab === 4 && (
+        {activeTab === 8 && (
           <motion.div key="tab3" {...fadeUp} style={{ display: 'flex', flexDirection: 'column', gap: 24, width: '100%' }}>
             <Box sx={{
               display: 'grid',
@@ -3744,9 +3813,9 @@ export default function StateDashboard() {
         )}
 
         {/* ════════════════════════════════════════════════════════════════════ */}
-        {/* TAB 5: Question-Level LO Analytics */}
+        {/* TAB 9: Question-Level LO Analytics */}
         {/* ════════════════════════════════════════════════════════════════════ */}
-        {activeTab === 5 && (
+        {activeTab === 9 && (
           <motion.div key="tab4" {...fadeUp} style={{ display: 'flex', flexDirection: 'column', gap: 24, width: '100%' }}>
             {!questions ? (
               <Box sx={{ textAlign: 'center', py: 6, background: '#ffffff', borderRadius: 3, p: 4, border: '1px solid #e2e8f0', width: '100%' }}>
@@ -3872,9 +3941,9 @@ export default function StateDashboard() {
         )}
 
         {/* ════════════════════════════════════════════════════════════════════ */}
-        {/* TAB 6: Teacher Matrix */}
+        {/* TAB 10: Teacher Matrix */}
         {/* ════════════════════════════════════════════════════════════════════ */}
-        {activeTab === 6 && (
+        {activeTab === 10 && (
           <motion.div key="tab5" {...fadeUp} style={{ display: 'flex', flexDirection: 'column', gap: 24, width: '100%' }}>
             {teachers.length === 0 ? (
               <Box sx={{ textAlign: 'center', py: 6, background: '#ffffff', borderRadius: 3, p: 4, border: '1px solid #e2e8f0', width: '100%' }}>
@@ -3987,9 +4056,9 @@ export default function StateDashboard() {
         )}
 
         {/* ════════════════════════════════════════════════════════════════════ */}
-        {/* TAB 7: Report Download Center */}
+        {/* TAB 11: Report Download Center */}
         {/* ════════════════════════════════════════════════════════════════════ */}
-        {activeTab === 7 && (
+        {activeTab === 11 && (
           <motion.div key="tab6" {...fadeUp} style={{ display: 'flex', flexDirection: 'column', gap: 24, width: '100%' }}>
 
             {/* ── Report Center Hero Banner ────────────────────────────────────── */}
@@ -3998,26 +4067,26 @@ export default function StateDashboard() {
               sx={{
                 p: { xs: 2.5, md: 3.5 },
                 borderRadius: 3.5,
-                background: 'linear-gradient(135deg, #0f3460 0%, #17467d 50%, #0284c7 100%)',
-                boxShadow: '0 10px 30px -5px rgba(15, 52, 96, 0.3), 0 4px 12px -2px rgba(2, 132, 199, 0.2)',
-                color: '#ffffff',
+                background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 50%, #f0f9ff 100%)',
+                border: '1px solid #e2e8f0',
+                boxShadow: '0 1px 3px rgba(15,23,42,0.03), 0 10px 25px -5px rgba(2,132,199,0.06)',
+                color: '#0f172a',
                 position: 'relative',
                 overflow: 'hidden',
               }}
             >
               {/* Decorative background glows */}
-              <Box sx={{ position: 'absolute', top: -50, right: -50, width: 240, height: 240, borderRadius: '50%', background: 'rgba(255,255,255,0.06)', pointerEvents: 'none' }} />
-              <Box sx={{ position: 'absolute', bottom: -30, left: '40%', width: 180, height: 180, borderRadius: '50%', background: 'rgba(255,255,255,0.04)', pointerEvents: 'none' }} />
+              <Box sx={{ position: 'absolute', top: -50, right: -50, width: 240, height: 240, borderRadius: '50%', background: 'radial-gradient(circle, rgba(2,132,199,0.08) 0%, transparent 70%)', pointerEvents: 'none' }} />
+              <Box sx={{ position: 'absolute', bottom: -30, left: '40%', width: 180, height: 180, borderRadius: '50%', background: 'radial-gradient(circle, rgba(99,102,241,0.06) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
               <Box sx={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 2.5 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                     <Box sx={{
                       width: 56, height: 56, borderRadius: 2.5,
-                      background: 'rgba(255,255,255,0.15)',
-                      border: '1px solid rgba(255,255,255,0.25)',
+                      background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+                      boxShadow: '0 4px 14px rgba(2,132,199,0.25)',
                     }}>
                       <Description sx={{ color: '#ffffff', fontSize: 32 }} />
                     </Box>
@@ -4026,7 +4095,7 @@ export default function StateDashboard() {
                         <Typography sx={{
                           fontSize: { xs: '1.25rem', sm: '1.5rem', md: '1.65rem' },
                           fontWeight: 900,
-                          color: '#ffffff',
+                          color: '#0f172a',
                           fontFamily: '"Plus Jakarta Sans", sans-serif',
                           letterSpacing: '-0.02em',
                         }}>
@@ -4035,10 +4104,10 @@ export default function StateDashboard() {
                         <Chip
                           label="OFFICIAL REPOSITORIES"
                           size="small"
-                          sx={{ background: '#10b981', color: '#ffffff', fontWeight: 800, fontSize: '0.66rem', height: 22 }}
+                          sx={{ background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', fontWeight: 800, fontSize: '0.66rem', height: 22 }}
                         />
                       </Box>
-                      <Typography sx={{ color: 'rgba(255,255,255,0.85)', fontSize: { xs: '0.78rem', sm: '0.84rem' }, fontWeight: 500 }}>
+                      <Typography sx={{ color: '#64748b', fontSize: { xs: '0.78rem', sm: '0.84rem' }, fontWeight: 500 }}>
                         Directorate of Public Instruction (DPI) & Samagra Shiksha · Vidya Samiksha Kendra (VSK)
                       </Typography>
                     </Box>
@@ -4051,9 +4120,9 @@ export default function StateDashboard() {
                       onClick={() => setIsDossierPreviewOpen(true)}
                       startIcon={<PictureAsPdf sx={{ fontSize: 18 }} />}
                       sx={{
-                        background: '#ffffff',
-                        color: '#0f3460',
-                        fontWeight: 900,
+                        background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                        color: '#ffffff',
+                        fontWeight: 800,
                         fontSize: '0.82rem',
                         borderRadius: 2.2,
                         px: 2.5,

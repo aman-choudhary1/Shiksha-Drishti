@@ -508,43 +508,44 @@ export default function TeacherDashboard() {
           p: { xs: 2.5, sm: 3.5, md: 4 },
           mb: 3,
           borderRadius: 4,
-          background: 'linear-gradient(135deg, #091a3c 0%, #0f3460 40%, #0369a1 80%, #0284c7 100%)',
-          color: '#fff',
+          background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 50%, #eff6ff 100%)',
+          color: '#0f172a',
           position: 'relative',
           overflow: 'hidden',
-          boxShadow: '0 16px 48px rgba(15, 52, 96, 0.28)',
+          border: '1px solid #e2e8f0',
+          boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03), 0 10px 25px -5px rgba(2, 132, 199, 0.05)',
           width: '100%',
           boxSizing: 'border-box',
         }}>
           {/* Decorative Ambient Accents */}
-          <Box sx={{ position: 'absolute', right: -60, top: -60, width: 280, height: 280, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', pointerEvents: 'none' }} />
-          <Box sx={{ position: 'absolute', right: 80, bottom: -80, width: 220, height: 220, borderRadius: '50%', background: 'rgba(232,144,5,0.1)', pointerEvents: 'none' }} />
-          <Box sx={{ position: 'absolute', left: -30, top: -30, width: 160, height: 160, borderRadius: '50%', background: 'rgba(255,255,255,0.03)', pointerEvents: 'none' }} />
+          <Box sx={{ position: 'absolute', right: -60, top: -60, width: 280, height: 280, borderRadius: '50%', background: 'radial-gradient(circle, rgba(2,132,199,0.08) 0%, transparent 70%)', pointerEvents: 'none' }} />
+          <Box sx={{ position: 'absolute', right: 80, bottom: -80, width: 220, height: 220, borderRadius: '50%', background: 'radial-gradient(circle, rgba(232,144,5,0.06) 0%, transparent 70%)', pointerEvents: 'none' }} />
+          <Box sx={{ position: 'absolute', left: -30, top: -30, width: 160, height: 160, borderRadius: '50%', background: 'radial-gradient(circle, rgba(99,102,241,0.05) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
           {/* Top Row: Welcome & Action Buttons */}
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 2, position: 'relative', zIndex: 1 }}>
             <Box>
-              <Typography sx={{ color: '#93c5fd', letterSpacing: '0.08em', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', mb: 0.5 }}>
+              <Typography sx={{ color: '#0284c7', letterSpacing: '0.08em', fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', mb: 0.5 }}>
                 Teacher Command Center · SCERT Chhattisgarh
               </Typography>
-              <Typography sx={{ fontWeight: 800, fontSize: { xs: '1.5rem', sm: '1.9rem', md: '2.2rem' }, lineHeight: 1.15, fontFamily: '"Plus Jakarta Sans", sans-serif', mb: 0.75 }}>
+              <Typography sx={{ fontWeight: 800, fontSize: { xs: '1.5rem', sm: '1.9rem', md: '2.2rem' }, lineHeight: 1.15, fontFamily: '"Plus Jakarta Sans", sans-serif', mb: 0.75, color: '#0f172a' }}>
                 {greeting}, {user?.full_name?.split(' ')[0]} 👋
               </Typography>
               {user?.school_name && (
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                  <School sx={{ fontSize: 16, color: '#93c5fd' }} />
-                  <Typography sx={{ color: 'rgba(255,255,255,0.9)', fontWeight: 600, fontSize: '0.85rem' }}>
+                  <School sx={{ fontSize: 16, color: '#0284c7' }} />
+                  <Typography sx={{ color: '#475569', fontWeight: 600, fontSize: '0.85rem' }}>
                     {user.school_name}
                   </Typography>
                   <Chip
                     label="Session 2026-27"
                     size="small"
                     sx={{
-                      background: 'rgba(232,144,39,0.25)',
-                      color: '#fde68a',
+                      background: '#fffbeb',
+                      color: '#b45309',
                       fontWeight: 700,
                       height: 22,
-                      border: '1px solid rgba(232,144,39,0.4)',
+                      border: '1px solid #fde68a',
                       fontSize: '0.68rem',
                       borderRadius: 1.5,
                     }}
@@ -559,15 +560,17 @@ export default function TeacherDashboard() {
                 startIcon={<Refresh sx={{ fontSize: 16 }} />}
                 onClick={fetchAssessments}
                 sx={{
-                  borderColor: 'rgba(255,255,255,0.35)',
-                  color: '#ffffff',
+                  borderColor: '#cbd5e1',
+                  color: '#334155',
                   borderRadius: 2.5,
                   fontWeight: 700,
                   fontSize: '0.82rem',
                   textTransform: 'none',
                   px: 2,
                   py: 0.9,
-                  '&:hover': { borderColor: 'rgba(255,255,255,0.7)', background: 'rgba(255,255,255,0.1)' },
+                  background: '#ffffff',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+                  '&:hover': { borderColor: '#94a3b8', background: '#f8fafc' },
                 }}
               >
                 Refresh
@@ -577,15 +580,15 @@ export default function TeacherDashboard() {
                 startIcon={<Add />}
                 onClick={() => navigate('/assessments/new')}
                 sx={{
-                  background: 'linear-gradient(135deg, #e89005 0%, #f59e0b 100%)',
+                  background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
                   color: '#ffffff',
                   fontWeight: 800,
                   borderRadius: 2.5,
                   textTransform: 'none',
                   px: 2.2,
                   py: 0.9,
-                  boxShadow: '0 6px 20px rgba(232,144,5,0.45)',
-                  '&:hover': { background: '#d97706', boxShadow: '0 8px 25px rgba(232,144,5,0.55)' },
+                  boxShadow: '0 4px 14px rgba(2, 132, 199, 0.25)',
+                  '&:hover': { background: 'linear-gradient(135deg, #0369a1 0%, #075985 100%)' },
                 }}
               >
                 + New Assessment

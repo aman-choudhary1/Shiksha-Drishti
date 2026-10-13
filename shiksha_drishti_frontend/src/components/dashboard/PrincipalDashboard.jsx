@@ -505,7 +505,6 @@ export default function PrincipalDashboard() {
       icon: <Warning sx={{ fontSize: 18 }} />,
       badge: 'Action Needed',
       actionText: 'View',
-      onClick: () => handleTabChange(null, 2),
       wavePoints: 'M0,34 Q30,22 60,30 T120,20 T180,32 T240,14 T280,22 L280,45 L0,45 Z',
     },
   ];
@@ -516,12 +515,12 @@ export default function PrincipalDashboard() {
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
         <Card sx={{
           mb: 2,
-          background: 'linear-gradient(135deg, #071526 0%, #0f3460 55%, #0284c7 100%)',
-          color: '#ffffff',
+          background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 50%, #eff6ff 100%)',
+          color: '#0f172a',
           borderRadius: 3,
-          boxShadow: '0 4px 20px rgba(15, 52, 96, 0.25)',
+          boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03), 0 10px 25px -5px rgba(2, 132, 199, 0.05)',
           overflow: 'hidden',
-          border: 'none',
+          border: '1px solid #e2e8f0',
           position: 'relative',
         }}>
           {/* Ambient Glow */}
@@ -532,7 +531,7 @@ export default function PrincipalDashboard() {
             width: 220,
             height: 220,
             borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(56, 189, 248, 0.25) 0%, transparent 70%)',
+            background: 'radial-gradient(circle, rgba(2, 132, 199, 0.08) 0%, transparent 70%)',
             pointerEvents: 'none',
           }} />
 
@@ -543,9 +542,9 @@ export default function PrincipalDashboard() {
                   <Avatar sx={{
                     width: 44, height: 44,
                     borderRadius: 2,
-                    background: 'rgba(255, 255, 255, 0.15)',
-                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                    background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
                     color: '#ffffff',
+                    boxShadow: '0 4px 12px rgba(2, 132, 199, 0.25)',
                   }}>
                     <School sx={{ fontSize: 24, color: '#ffffff' }} />
                   </Avatar>
@@ -558,33 +557,34 @@ export default function PrincipalDashboard() {
                         letterSpacing: '-0.01em',
                         fontFamily: '"Plus Jakarta Sans", sans-serif',
                         lineHeight: 1.2,
+                        color: '#0f172a',
                       }}>
                         {school.school_name || 'GOVT MODEL HIGHER SECONDARY SCHOOL'}
                       </Typography>
                       <Chip
-                        icon={<VerifiedUser sx={{ fontSize: '13px !important', color: '#10b981 !important' }} />}
+                        icon={<VerifiedUser sx={{ fontSize: '13px !important', color: '#059669 !important' }} />}
                         label={`UDISE: ${school.udise_code || '22050904705'}`}
                         size="small"
                         sx={{
                           borderRadius: 1.5,
-                          background: 'rgba(255, 255, 255, 0.14)',
-                          color: '#ffffff',
+                          background: '#ecfdf5',
+                          color: '#047857',
                           fontWeight: 800,
                           fontSize: '0.68rem',
                           height: 22,
-                          border: '1px solid rgba(255, 255, 255, 0.25)'
+                          border: '1px solid #a7f3d0'
                         }}
                       />
                     </Box>
 
-                    <Typography variant="body2" sx={{ opacity: 0.9, display: 'flex', alignItems: 'center', gap: 0.8, flexWrap: 'wrap', fontSize: '0.78rem' }}>
-                      <span>📍 संकुल: <strong>{school.cluster_name || 'Cluster 1'}</strong></span>
+                    <Typography variant="body2" sx={{ color: '#64748b', display: 'flex', alignItems: 'center', gap: 0.8, flexWrap: 'wrap', fontSize: '0.78rem' }}>
+                      <span>📍 संकुल: <strong style={{ color: '#0f172a' }}>{school.cluster_name || 'Cluster 1'}</strong></span>
                       <span style={{ opacity: 0.4 }}>•</span>
-                      <span>ब्लॉक: <strong>{school.block_name || 'Urban'}</strong></span>
+                      <span>ब्लॉक: <strong style={{ color: '#0f172a' }}>{school.block_name || 'Urban'}</strong></span>
                       <span style={{ opacity: 0.4 }}>•</span>
-                      <span>जिला: <strong>{school.district_name || 'Raipur'}</strong></span>
+                      <span>जिला: <strong style={{ color: '#0f172a' }}>{school.district_name || 'Raipur'}</strong></span>
                       <span style={{ opacity: 0.4 }}>•</span>
-                      <span>संस्था प्रमुख: <strong>{school.hos_name || user?.full_name}</strong></span>
+                      <span>संस्था प्रमुख: <strong style={{ color: '#0f172a' }}>{school.hos_name || user?.full_name}</strong></span>
                     </Typography>
                   </Box>
                 </Box>
@@ -594,22 +594,23 @@ export default function PrincipalDashboard() {
               <Grid item xs={12} lg={4} sx={{ textAlign: { xs: 'left', lg: 'right' } }}>
                 <Stack direction="row" spacing={1} justifyContent={{ xs: 'flex-start', lg: 'flex-end' }} flexWrap="wrap">
                   <Button
-                    variant="contained"
+                    variant="outlined"
                     size="small"
                     startIcon={refreshing ? <CircularProgress size={13} color="inherit" /> : <Refresh sx={{ fontSize: 16 }} />}
                     onClick={() => loadData(true)}
                     disabled={refreshing}
                     sx={{
                       borderRadius: 2,
-                      background: 'rgba(255, 255, 255, 0.14)',
-                      border: '1px solid rgba(255, 255, 255, 0.28)',
-                      color: '#ffffff',
+                      background: '#ffffff',
+                      border: '1px solid #cbd5e1',
+                      color: '#334155',
                       fontWeight: 700,
                       py: 0.5,
                       px: 1.4,
                       fontSize: '0.75rem',
                       textTransform: 'none',
-                      '&:hover': { background: 'rgba(255, 255, 255, 0.25)' }
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+                      '&:hover': { background: '#f8fafc', borderColor: '#94a3b8' }
                     }}
                   >
                     {refreshing ? 'Syncing...' : 'Refresh'}
@@ -622,15 +623,15 @@ export default function PrincipalDashboard() {
                     onClick={handlePrint}
                     sx={{
                       borderRadius: 2,
-                      background: 'linear-gradient(135deg, #e89005 0%, #f59e0b 100%)',
+                      background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
                       color: '#ffffff',
                       fontWeight: 800,
                       py: 0.5,
                       px: 1.4,
                       fontSize: '0.75rem',
                       textTransform: 'none',
-                      boxShadow: '0 2px 8px rgba(232, 144, 5, 0.35)',
-                      '&:hover': { background: '#d97706' }
+                      boxShadow: '0 4px 12px rgba(2, 132, 199, 0.25)',
+                      '&:hover': { background: 'linear-gradient(135deg, #0369a1 0%, #075985 100%)' }
                     }}
                   >
                     Print Report (PDF)

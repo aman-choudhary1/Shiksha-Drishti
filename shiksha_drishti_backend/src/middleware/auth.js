@@ -45,4 +45,35 @@ const authenticate = asyncHandler(async (req, res, next) => {
   next();
 });
 
+/**
+ * optionalAuth: Populates req.user if Bearer token is provided,
+ * but does NOT reject requests without tokens.
+ */
+const optionalAuth = asyncHandler(async (req, res, next) => {
+  const header = req.headers.authorization || '';
+  const [scheme, token] = header.split(' ');
+
+  if (scheme === 'Bearer' && token) {
+    try {
+      const payload = verifyToken(token);
+      req.user = {
+        id: payload.user_id,
+        username: payload.username,
+        full_name: payload.full_name,
+        role: payload.role,
+        primary_udise: payload.primary_udise,
+        scope_type: payload.scope_type,
+        scope_value: payload.scope_value,
+      };
+    } catch {
+      // Token invalid or expired, continue without req.user
+    }
+  }
+
+  next();
+});
+
+authenticate.optionalAuth = optionalAuth;
 module.exports = authenticate;
+module.exports.optionalAuth = optionalAuth;
+

@@ -329,11 +329,12 @@ export default function DistrictDashboard() {
           mb: 2.5,
           p: { xs: 2, md: 2.5 },
           borderRadius: 3,
-          background: 'linear-gradient(135deg, #071526 0%, #0f3460 50%, #1e293b 100%)',
-          color: '#ffffff',
+          background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 50%, #eff6ff 100%)',
+          color: '#0f172a',
           position: 'relative',
           overflow: 'hidden',
-          boxShadow: '0 8px 24px rgba(7, 21, 38, 0.2)',
+          border: '1px solid #e2e8f0',
+          boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03), 0 10px 25px -5px rgba(2, 132, 199, 0.05)',
           width: '100%',
         }}
       >
@@ -346,7 +347,7 @@ export default function DistrictDashboard() {
             width: 220,
             height: 220,
             borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(56, 189, 248, 0.2) 0%, rgba(2, 132, 199, 0) 70%)',
+            background: 'radial-gradient(circle, rgba(2, 132, 199, 0.08) 0%, transparent 70%)',
             pointerEvents: 'none',
           }}
         />
@@ -355,13 +356,13 @@ export default function DistrictDashboard() {
           <Box sx={{ flex: 1 }}>
             <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1, flexWrap: 'wrap', gap: 0.5 }}>
               <Chip
-                icon={<VerifiedUser sx={{ fontSize: '14px !important', color: '#38bdf8' }} />}
+                icon={<VerifiedUser sx={{ fontSize: '14px !important', color: '#0284c7' }} />}
                 label="जिला शिक्षा कमान केंद्र (DEO Raipur)"
                 size="small"
                 sx={{
-                  background: 'rgba(56, 189, 248, 0.15)',
-                  color: '#7dd3fc',
-                  border: '1px solid rgba(56, 189, 248, 0.3)',
+                  background: '#f0f9ff',
+                  color: '#0284c7',
+                  border: '1px solid #bae6fd',
                   fontWeight: 800,
                   fontSize: '0.7rem',
                   height: 24,
@@ -371,8 +372,9 @@ export default function DistrictDashboard() {
                 label="Academic Year 2025-26"
                 size="small"
                 sx={{
-                  background: 'rgba(255, 255, 255, 0.08)',
-                  color: '#cbd5e1',
+                  background: '#f1f5f9',
+                  color: '#475569',
+                  border: '1px solid #e2e8f0',
                   fontSize: '0.7rem',
                   fontWeight: 600,
                   height: 24,
@@ -382,20 +384,20 @@ export default function DistrictDashboard() {
                 label="State Board Assessment Analytics"
                 size="small"
                 sx={{
-                  background: 'rgba(16, 185, 129, 0.15)',
-                  color: '#6ee7b7',
+                  background: '#ecfdf5',
+                  color: '#047857',
                   fontSize: '0.7rem',
                   fontWeight: 700,
-                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                  border: '1px solid #a7f3d0',
                   height: 24,
                 }}
               />
             </Stack>
 
-            <Typography variant="h5" sx={{ fontWeight: 800, letterSpacing: -0.4, color: '#f8fafc', fontSize: { xs: '1.3rem', md: '1.65rem' } }}>
+            <Typography variant="h5" sx={{ fontWeight: 800, letterSpacing: -0.4, color: '#0f172a', fontSize: { xs: '1.3rem', md: '1.65rem' } }}>
               District {districtInfo.district_name || 'RAIPUR'} Education Analytics
             </Typography>
-            <Typography variant="caption" sx={{ color: '#94a3b8', mt: 0.3, fontWeight: 500, display: 'block' }}>
+            <Typography variant="caption" sx={{ color: '#64748b', mt: 0.3, fontWeight: 500, display: 'block' }}>
               Samagra Shiksha Chhattisgarh • District Code: {districtInfo.district_cd || '2205'} | DEO: {districtInfo.officer_name || 'Dr. Surendra Kumar Pandey'}
             </Typography>
           </Box>
@@ -408,14 +410,15 @@ export default function DistrictDashboard() {
                 onClick={fetchDistrictData}
                 size="small"
                 sx={{
-                  borderColor: 'rgba(255, 255, 255, 0.2)',
-                  color: '#ffffff',
-                  fontWeight: 600,
+                  borderColor: '#cbd5e1',
+                  color: '#334155',
+                  fontWeight: 700,
                   borderRadius: 2,
                   textTransform: 'none',
                   fontSize: '0.78rem',
-                  backdropFilter: 'blur(8px)',
-                  '&:hover': { borderColor: '#38bdf8', background: 'rgba(56, 189, 248, 0.1)' }
+                  background: '#ffffff',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+                  '&:hover': { borderColor: '#94a3b8', background: '#f8fafc' }
                 }}
               >
                 Refresh Data
@@ -426,13 +429,13 @@ export default function DistrictDashboard() {
                 onClick={() => window.print()}
                 size="small"
                 sx={{
-                  background: 'linear-gradient(135deg, #0284c7 0%, #2563eb 100%)',
+                  background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
                   color: '#ffffff',
-                  fontWeight: 700,
+                  fontWeight: 800,
                   borderRadius: 2,
                   textTransform: 'none',
                   fontSize: '0.78rem',
-                  boxShadow: '0 4px 14px rgba(2, 132, 199, 0.35)',
+                  boxShadow: '0 4px 14px rgba(2, 132, 199, 0.25)',
                 }}
               >
                 Export DEO Report

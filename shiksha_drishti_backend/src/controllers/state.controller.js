@@ -1346,10 +1346,470 @@ const getStateStudentPerformance = asyncHandler(async (req, res) => {
   });
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /api/state/subject-trends — Multi-term subject trends & trajectories
+// ─────────────────────────────────────────────────────────────────────────────
+const getStateSubjectTrends = asyncHandler(async (req, res) => {
+  const mf = getMarksFilter(req.query);
+  const cacheKey = `state:subject_trends:${JSON.stringify(req.query || {})}`;
+  const cached = cache.get(cacheKey);
+  if (cached) return res.json(cached);
+
+  const { rows } = await pool.query(`
+    SELECT
+      s.id AS subject_id,
+      s.name AS subject_name,
+      s.code AS subject_code,
+      a.assessment_name,
+      a.assessment_type,
+      ROUND(COALESCE(AVG(CASE WHEN sm.is_absent THEN 0
+                              ELSE sm.marks_obtained / NULLIF(sm.max_marks, 0) * 100
+                         END), 0)::numeric, 1) AS avg_score_pct,
+      COUNT(DISTINCT sm.student_id) AS student_count,
+      COUNT(DISTINCT sm.student_id) FILTER (
+        WHERE sm.is_absent = false AND sm.marks_obtained / NULLIF(sm.max_marks, 0) >= 0.4
+      ) AS pass_count,
+      COUNT(DISTINCT sm.student_id) FILTER (
+        WHERE sm.is_absent = false AND sm.marks_obtained / NULLIF(sm.max_marks, 0) < 0.4
+      ) AS weak_count
+    FROM sd_subject_marks sm
+    JOIN sd_assessments a ON a.id = sm.assessment_id
+    JOIN sd_schools sc ON sc.udise_code = a.school_udise
+    JOIN sd_classes c ON c.id = a.class_id
+    JOIN sd_subjects s ON s.id = sm.subject_id
+    WHERE sm.marks_obtained IS NOT NULL
+      ${mf.whereClause}
+    GROUP BY s.id, s.name, s.code, a.assessment_name, a.assessment_type
+    ORDER BY s.name, a.assessment_name
+  `, mf.params);
+
+  const subjectMap = {};
+  const termSet = new Set();
+
+  rows.forEach(r => {
+    const sName = r.subject_name;
+    const term = r.assessment_name;
+    termSet.add(term);
+
+    if (!subjectMap[sName]) {
+      subjectMap[sName] = {
+        subject_id: r.subject_id,
+        subject_name: sName,
+        subject_code: r.subject_code,
+        terms: {},
+        total_evaluations: 0,
+        weak_count: 0,
+        scores: [],
+      };
+    }
+
+    const avg = Number(r.avg_score_pct || 0);
+    const count = Number(r.student_count || 0);
+    const weak = Number(r.weak_count || 0);
+
+    subjectMap[sName].terms[term] = {
+      assessment_name: term,
+      assessment_type: r.assessment_type,
+      avg_score_pct: avg,
+      student_count: count,
+      pass_rate_pct: count > 0 ? Math.round(((Number(r.pass_count) || 0) / count) * 100) : 0,
+      weak_count: weak,
+    };
+    subjectMap[sName].scores.push(avg);
+    subjectMap[sName].total_evaluations += count;
+    subjectMap[sName].weak_count += weak;
+  });
+
+  const termsList = Array.from(termSet);
+
+  const timeline = termsList.map(term => {
+    const item = { term };
+    Object.keys(subjectMap).forEach(sName => {
+      item[sName] = subjectMap[sName].terms[term]?.avg_score_pct ?? null;
+    });
+    return item;
+  });
+
+  const subjects = Object.values(subjectMap).map(s => {
+    const scores = s.scores;
+    const initial = scores.length > 0 ? scores[0] : 0;
+    const current = scores.length > 0 ? scores[scores.length - 1] : 0;
+    const delta = Math.round((current - initial) * 10) / 10;
+    const avgOverall = scores.length > 0 ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10 : 0;
+
+    return {
+      subject_id: s.subject_id,
+      subject_name: s.subject_name,
+      subject_code: s.subject_code,
+      initial_score: initial,
+      current_score: current,
+      avg_score_pct: avgOverall,
+      delta,
+      trend_status: delta > 2 ? 'IMPROVING' : delta < -2 ? 'DECLINING' : 'STABLE',
+      total_evaluations: s.total_evaluations,
+      weak_count: s.weak_count,
+      terms: s.terms,
+    };
+  }).sort((a, b) => b.avg_score_pct - a.avg_score_pct);
+
+  const highestSubject = subjects[0]?.subject_name || 'N/A';
+  const mostImproved = [...subjects].sort((a, b) => b.delta - a.delta)[0]?.subject_name || 'N/A';
+  const needsAttention = [...subjects].sort((a, b) => a.avg_score_pct - b.avg_score_pct)[0]?.subject_name || 'N/A';
+
+  const responseData = {
+    timeline,
+    subjects,
+    terms: termsList,
+    kpis: {
+      total_subjects: subjects.length,
+      highest_subject: highestSubject,
+      most_improved: mostImproved,
+      needs_attention: needsAttention,
+    },
+  };
+
+  cache.set(cacheKey, responseData, 60);
+  res.json(responseData);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /api/state/promotion-readiness — Student promotion readiness & failure flags
+// ─────────────────────────────────────────────────────────────────────────────
+const getStatePromotionReadiness = asyncHandler(async (req, res) => {
+  const mf = getMarksFilter(req.query);
+  const { limit = 100 } = req.query;
+  const cacheKey = `state:promotion:${JSON.stringify(req.query || {})}`;
+  const cached = cache.get(cacheKey);
+  if (cached) return res.json(cached);
+
+  const [summaryRes, classRes, districtRes, rosterRes] = await Promise.all([
+    pool.query(`
+      WITH student_metrics AS (
+        SELECT sm.student_id,
+          ROUND(AVG(CASE WHEN sm.is_absent THEN 0
+                         ELSE sm.marks_obtained / NULLIF(sm.max_marks, 0) * 100
+                    END)::numeric, 1) AS overall_pct,
+          COUNT(CASE WHEN (CASE WHEN sm.is_absent THEN 0
+                                ELSE sm.marks_obtained / NULLIF(sm.max_marks, 0) * 100
+                           END) < 33 THEN 1 END) AS failed_subjects_count
+        FROM sd_subject_marks sm
+        JOIN sd_assessments a ON a.id = sm.assessment_id
+        JOIN sd_schools sc ON sc.udise_code = a.school_udise
+        JOIN sd_classes c ON c.id = a.class_id
+        JOIN sd_subjects s ON s.id = sm.subject_id
+        WHERE sm.marks_obtained IS NOT NULL
+          ${mf.whereClause}
+        GROUP BY sm.student_id
+      )
+      SELECT
+        COUNT(*) AS total_evaluated,
+        COUNT(CASE WHEN overall_pct >= 40 AND failed_subjects_count = 0 THEN 1 END) AS ready_count,
+        COUNT(CASE WHEN (overall_pct >= 35 AND overall_pct < 40) OR (failed_subjects_count = 1 AND overall_pct >= 35) THEN 1 END) AS conditional_count,
+        COUNT(CASE WHEN overall_pct < 35 OR failed_subjects_count >= 2 THEN 1 END) AS at_risk_count
+      FROM student_metrics
+    `, mf.params),
+
+    pool.query(`
+      WITH student_metrics AS (
+        SELECT sm.student_id, c.class_name,
+          ROUND(AVG(CASE WHEN sm.is_absent THEN 0
+                         ELSE sm.marks_obtained / NULLIF(sm.max_marks, 0) * 100
+                    END)::numeric, 1) AS overall_pct,
+          COUNT(CASE WHEN (CASE WHEN sm.is_absent THEN 0
+                                ELSE sm.marks_obtained / NULLIF(sm.max_marks, 0) * 100
+                           END) < 33 THEN 1 END) AS failed_subjects_count
+        FROM sd_subject_marks sm
+        JOIN sd_assessments a ON a.id = sm.assessment_id
+        JOIN sd_schools sc ON sc.udise_code = a.school_udise
+        JOIN sd_classes c ON c.id = a.class_id
+        JOIN sd_subjects s ON s.id = sm.subject_id
+        WHERE sm.marks_obtained IS NOT NULL
+          ${mf.whereClause}
+        GROUP BY sm.student_id, c.class_name
+      )
+      SELECT
+        class_name,
+        COUNT(*) AS total_evaluated,
+        COUNT(CASE WHEN overall_pct >= 40 AND failed_subjects_count = 0 THEN 1 END) AS ready_count,
+        COUNT(CASE WHEN (overall_pct >= 35 AND overall_pct < 40) OR (failed_subjects_count = 1 AND overall_pct >= 35) THEN 1 END) AS conditional_count,
+        COUNT(CASE WHEN overall_pct < 35 OR failed_subjects_count >= 2 THEN 1 END) AS at_risk_count
+      FROM student_metrics
+      GROUP BY class_name
+      ORDER BY class_name
+    `, mf.params),
+
+    pool.query(`
+      WITH student_metrics AS (
+        SELECT sm.student_id, sc.district_name, sc.district_cd,
+          ROUND(AVG(CASE WHEN sm.is_absent THEN 0
+                         ELSE sm.marks_obtained / NULLIF(sm.max_marks, 0) * 100
+                    END)::numeric, 1) AS overall_pct,
+          COUNT(CASE WHEN (CASE WHEN sm.is_absent THEN 0
+                                ELSE sm.marks_obtained / NULLIF(sm.max_marks, 0) * 100
+                           END) < 33 THEN 1 END) AS failed_subjects_count
+        FROM sd_subject_marks sm
+        JOIN sd_assessments a ON a.id = sm.assessment_id
+        JOIN sd_schools sc ON sc.udise_code = a.school_udise
+        JOIN sd_classes c ON c.id = a.class_id
+        JOIN sd_subjects s ON s.id = sm.subject_id
+        WHERE sm.marks_obtained IS NOT NULL
+          ${mf.whereClause}
+        GROUP BY sm.student_id, sc.district_name, sc.district_cd
+      )
+      SELECT
+        district_name, district_cd,
+        COUNT(*) AS total_evaluated,
+        COUNT(CASE WHEN overall_pct >= 40 AND failed_subjects_count = 0 THEN 1 END) AS ready_count,
+        COUNT(CASE WHEN (overall_pct >= 35 AND overall_pct < 40) OR (failed_subjects_count = 1 AND overall_pct >= 35) THEN 1 END) AS conditional_count,
+        COUNT(CASE WHEN overall_pct < 35 OR failed_subjects_count >= 2 THEN 1 END) AS at_risk_count
+      FROM student_metrics
+      GROUP BY district_name, district_cd
+      ORDER BY at_risk_count DESC
+    `, mf.params),
+
+    pool.query(`
+      WITH student_metrics AS (
+        SELECT sm.student_id,
+          st.student_name, st.roll_number, st.gender,
+          c.class_name, sc.school_name, sc.district_name, sc.block_name,
+          ROUND(AVG(CASE WHEN sm.is_absent THEN 0
+                         ELSE sm.marks_obtained / NULLIF(sm.max_marks, 0) * 100
+                    END)::numeric, 1) AS overall_pct,
+          COUNT(CASE WHEN (CASE WHEN sm.is_absent THEN 0
+                                ELSE sm.marks_obtained / NULLIF(sm.max_marks, 0) * 100
+                           END) < 33 THEN 1 END) AS failed_subjects_count,
+          string_agg(
+            CASE WHEN (CASE WHEN sm.is_absent THEN 0
+                            ELSE sm.marks_obtained / NULLIF(sm.max_marks, 0) * 100
+                       END) < 33
+                 THEN s.name || ' (' || ROUND((CASE WHEN sm.is_absent THEN 0
+                                                    ELSE sm.marks_obtained / NULLIF(sm.max_marks, 0) * 100
+                                               END)::numeric, 0) || '%)'
+                 ELSE NULL
+            END, ', '
+          ) AS failing_subjects
+        FROM sd_subject_marks sm
+        JOIN sd_students st ON st.id = sm.student_id
+        JOIN sd_assessments a ON a.id = sm.assessment_id
+        JOIN sd_schools sc ON sc.udise_code = a.school_udise
+        JOIN sd_classes c ON c.id = a.class_id
+        JOIN sd_subjects s ON s.id = sm.subject_id
+        WHERE sm.marks_obtained IS NOT NULL
+          ${mf.whereClause}
+        GROUP BY sm.student_id, st.student_name, st.roll_number, st.gender, c.class_name, sc.school_name, sc.district_name, sc.block_name
+      )
+      SELECT *
+      FROM student_metrics
+      ORDER BY
+        CASE WHEN overall_pct < 35 OR failed_subjects_count >= 2 THEN 1
+             WHEN failed_subjects_count = 1 THEN 2
+             ELSE 3
+        END ASC,
+        overall_pct ASC
+      LIMIT $${mf.params.length + 1}
+    `, [...mf.params, Number(limit)])
+  ]);
+
+  const summary = summaryRes.rows[0] || {};
+  const total = Number(summary.total_evaluated || 0);
+  const ready = Number(summary.ready_count || 0);
+  const conditional = Number(summary.conditional_count || 0);
+  const atRisk = Number(summary.at_risk_count || 0);
+
+  const readyPct = total > 0 ? Math.round((ready / total) * 100) : 0;
+  const condPct = total > 0 ? Math.round((conditional / total) * 100) : 0;
+  const atRiskPct = total > 0 ? Math.round((atRisk / total) * 100) : 0;
+
+  const roster = rosterRes.rows.map(r => {
+    const oPct = Number(r.overall_pct || 0);
+    const fCount = Number(r.failed_subjects_count || 0);
+    let promoStatus = 'READY';
+    let statusLabel = 'Ready for Promotion';
+    let badgeColor = 'emerald';
+
+    if (oPct < 35 || fCount >= 2) {
+      promoStatus = 'AT_RISK';
+      statusLabel = 'Critical At-Risk (Needs Remediation)';
+      badgeColor = 'rose';
+    } else if ((oPct >= 35 && oPct < 40) || fCount === 1) {
+      promoStatus = 'CONDITIONAL';
+      statusLabel = 'Conditional (Re-test Required)';
+      badgeColor = 'amber';
+    }
+
+    return {
+      ...r,
+      overall_pct: oPct,
+      failed_subjects_count: fCount,
+      promotion_status: promoStatus,
+      status_label: statusLabel,
+      badge_color: badgeColor,
+    };
+  });
+
+  const responseData = {
+    kpis: {
+      total_evaluated: total,
+      ready_count: ready,
+      ready_pct: readyPct,
+      conditional_count: conditional,
+      conditional_pct: condPct,
+      at_risk_count: atRisk,
+      at_risk_pct: atRiskPct,
+    },
+    class_breakdown: classRes.rows.map(c => {
+      const cTotal = Number(c.total_evaluated || 0);
+      const cReady = Number(c.ready_count || 0);
+      const cCond = Number(c.conditional_count || 0);
+      const cRisk = Number(c.at_risk_count || 0);
+      return {
+        class_name: c.class_name,
+        total: cTotal,
+        ready_count: cReady,
+        ready_pct: cTotal > 0 ? Math.round((cReady / cTotal) * 100) : 0,
+        conditional_count: cCond,
+        conditional_pct: cTotal > 0 ? Math.round((cCond / cTotal) * 100) : 0,
+        at_risk_count: cRisk,
+        at_risk_pct: cTotal > 0 ? Math.round((cRisk / cTotal) * 100) : 0,
+      };
+    }),
+    district_breakdown: districtRes.rows.map(d => {
+      const dTotal = Number(d.total_evaluated || 0);
+      return {
+        district_name: d.district_name,
+        district_cd: d.district_cd,
+        total: dTotal,
+        ready_count: Number(d.ready_count || 0),
+        conditional_count: Number(d.conditional_count || 0),
+        at_risk_count: Number(d.at_risk_count || 0),
+        at_risk_pct: dTotal > 0 ? Math.round((Number(d.at_risk_count || 0) / dTotal) * 100) : 0,
+      };
+    }),
+    students: roster,
+  };
+
+  cache.set(cacheKey, responseData, 60);
+  res.json(responseData);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /api/state/submission-tracker — Track submitted vs pending report cards
+// ─────────────────────────────────────────────────────────────────────────────
+const getStateSubmissionTracker = asyncHandler(async (req, res) => {
+  const { district, search, limit = 150 } = req.query;
+  const cacheKey = `state:submission_tracker:${JSON.stringify(req.query || {})}`;
+  const cached = cache.get(cacheKey);
+  if (cached) return res.json(cached);
+
+  const sf = getSchoolFilter(req.query);
+
+  const [macroRes, districtRes, teachersRes] = await Promise.all([
+    pool.query(`
+      SELECT
+        COUNT(DISTINCT a.id) AS total_assessments,
+        COUNT(DISTINCT a.id) FILTER (WHERE a.status IN ('SUBMITTED', 'VERIFIED', 'LOCKED')) AS submitted_assessments,
+        COUNT(DISTINCT a.id) FILTER (WHERE a.status = 'DRAFT') AS pending_assessments,
+        COUNT(DISTINCT a.created_by) AS total_active_teachers,
+        COUNT(DISTINCT a.created_by) FILTER (WHERE a.status IN ('SUBMITTED', 'VERIFIED', 'LOCKED')) AS submitting_teachers
+      FROM sd_assessments a
+      JOIN sd_schools sc ON sc.udise_code = a.school_udise
+      ${sf.whereOnly}
+    `, sf.params),
+
+    pool.query(`
+      SELECT
+        sc.district_cd, sc.district_name,
+        COUNT(DISTINCT a.id) AS total_assessments,
+        COUNT(DISTINCT a.id) FILTER (WHERE a.status IN ('SUBMITTED', 'VERIFIED', 'LOCKED')) AS submitted_assessments,
+        COUNT(DISTINCT a.id) FILTER (WHERE a.status = 'DRAFT') AS pending_assessments,
+        ROUND(COALESCE(
+          (COUNT(DISTINCT a.id) FILTER (WHERE a.status IN ('SUBMITTED', 'VERIFIED', 'LOCKED'))::numeric /
+           NULLIF(COUNT(DISTINCT a.id), 0)) * 100, 0
+        )::numeric, 1) AS submission_rate_pct
+      FROM sd_schools sc
+      LEFT JOIN sd_assessments a ON a.school_udise = sc.udise_code
+      ${sf.whereOnly}
+      GROUP BY sc.district_cd, sc.district_name
+      ORDER BY submission_rate_pct DESC
+    `, sf.params),
+
+    pool.query(`
+      SELECT
+        u.id AS user_id, u.full_name, u.mobile, u.username,
+        sc.school_name, sc.udise_code, sc.block_name, sc.district_name,
+        COUNT(DISTINCT a.id) AS total_assigned,
+        COUNT(DISTINCT a.id) FILTER (WHERE a.status IN ('SUBMITTED', 'VERIFIED', 'LOCKED')) AS submitted_count,
+        COUNT(DISTINCT a.id) FILTER (WHERE a.status = 'DRAFT') AS pending_count,
+        string_agg(
+          CASE WHEN a.status = 'DRAFT' THEN a.assessment_name || ' (' || c.class_name || ')' ELSE NULL END,
+          '; '
+        ) AS pending_items
+      FROM sd_users u
+      JOIN sd_schools sc ON sc.udise_code = u.primary_udise
+      JOIN sd_assessments a ON a.created_by = u.id
+      JOIN sd_classes c ON c.id = a.class_id
+      WHERE u.role = 'TEACHER'
+        ${district && district !== 'ALL' ? `AND (sc.district_name ILIKE $${sf.params.length + 1} OR sc.district_cd = $${sf.params.length + 1})` : ''}
+        ${search && search.trim() !== '' ? `AND (u.full_name ILIKE $${district && district !== 'ALL' ? sf.params.length + 2 : sf.params.length + 1} OR sc.school_name ILIKE $${district && district !== 'ALL' ? sf.params.length + 2 : sf.params.length + 1})` : ''}
+      GROUP BY u.id, u.full_name, u.mobile, u.username,
+               sc.school_name, sc.udise_code, sc.block_name, sc.district_name
+      ORDER BY pending_count DESC, total_assigned DESC
+      LIMIT $${district && district !== 'ALL' ? (search && search.trim() !== '' ? sf.params.length + 3 : sf.params.length + 2) : (search && search.trim() !== '' ? sf.params.length + 2 : sf.params.length + 1)}
+    `, [
+      ...sf.params,
+      ...(district && district !== 'ALL' ? [district] : []),
+      ...(search && search.trim() !== '' ? [`%${search.trim()}%`] : []),
+      Number(limit)
+    ])
+  ]);
+
+  const macro = macroRes.rows[0] || {};
+  const total = Number(macro.total_assessments || 0);
+  const submitted = Number(macro.submitted_assessments || 0);
+  const pending = Number(macro.pending_assessments || 0);
+  const subRate = total > 0 ? Math.round((submitted / total) * 100) : 0;
+
+  const teachers = teachersRes.rows.map(t => {
+    const assigned = Number(t.total_assigned || 0);
+    const sub = Number(t.submitted_count || 0);
+    const pend = Number(t.pending_count || 0);
+    const rate = assigned > 0 ? Math.round((sub / assigned) * 100) : 0;
+    const isCompliant = pend === 0;
+
+    return {
+      ...t,
+      total_assigned: assigned,
+      submitted_count: sub,
+      pending_count: pend,
+      submission_rate_pct: rate,
+      status: isCompliant ? 'COMPLIANT' : pend === assigned ? 'DEFAULTER' : 'IN_PROGRESS',
+      status_label: isCompliant ? '100% Submitted' : pend === assigned ? 'Overdue / Defaulter' : 'Partially Submitted',
+    };
+  });
+
+  const responseData = {
+    kpis: {
+      total_assessments: total,
+      submitted_assessments: submitted,
+      pending_assessments: pending,
+      submission_rate_pct: subRate,
+      active_teachers: Number(macro.total_active_teachers || 0),
+    },
+    district_compliance: districtRes.rows,
+    teachers,
+  };
+
+  cache.set(cacheKey, responseData, 60);
+  res.json(responseData);
+});
+
 module.exports = {
   getStateOverview,
   getStateDistricts,
   getStateQuestionAnalytics,
   getStateTeacherMatrix,
   getStateStudentPerformance,
+  getStateSubjectTrends,
+  getStatePromotionReadiness,
+  getStateSubmissionTracker,
 };

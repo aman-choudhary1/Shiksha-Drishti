@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
+const rawApiBase = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
+const API_BASE = rawApiBase.replace(/\s+/g, '');
 
 const api = axios.create({
   baseURL: API_BASE,
@@ -113,11 +114,14 @@ export const districtApi = {
 
 // State Admin / Super Admin APIs
 export const stateApi = {
-  getOverview:  (params) => api.get('/state/overview',   { params }),
-  getDistricts: (params) => api.get('/state/districts',  { params }),
-  getQuestions: (params) => api.get('/state/questions',  { params }),
-  getTeachers:  (params) => api.get('/state/teachers',   { params }),
-  getStudents:  (params) => api.get('/state/students',   { params }),
+  getOverview:            (params) => api.get('/state/overview',            { params }),
+  getDistricts:           (params) => api.get('/state/districts',           { params }),
+  getQuestions:           (params) => api.get('/state/questions',           { params }),
+  getTeachers:            (params) => api.get('/state/teachers',            { params }),
+  getStudents:            (params) => api.get('/state/students',            { params }),
+  getSubjectTrends:       (params) => api.get('/state/subject-trends',      { params }),
+  getPromotionReadiness:  (params) => api.get('/state/promotion-readiness', { params }),
+  getSubmissionTracker:   (params) => api.get('/state/submission-tracker',  { params }),
 };
 
 // Academic (UDISE) Data APIs – read-only analytics on 6.9M student records

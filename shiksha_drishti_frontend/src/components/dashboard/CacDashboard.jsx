@@ -428,12 +428,12 @@ export default function CacDashboard() {
           borderRadius: 3.2,
           mb: 2.2,
           p: { xs: 2, sm: 2.4 },
-          background: 'linear-gradient(135deg, #071526 0%, #0f3460 55%, #0284c7 100%)',
-          color: '#ffffff',
+          background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 50%, #eff6ff 100%)',
+          color: '#0f172a',
           position: 'relative',
           overflow: 'hidden',
-          boxShadow: '0 8px 32px rgba(7, 21, 38, 0.4)',
-          border: '1px solid rgba(56, 189, 248, 0.22)',
+          border: '1px solid #e2e8f0',
+          boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03), 0 10px 25px -5px rgba(2, 132, 199, 0.05)',
         }}
       >
         {/* Glow ambient spot */}
@@ -445,7 +445,7 @@ export default function CacDashboard() {
             width: 220,
             height: 220,
             borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(56, 189, 248, 0.25) 0%, rgba(2, 132, 199, 0) 70%)',
+            background: 'radial-gradient(circle, rgba(2, 132, 199, 0.08) 0%, transparent 70%)',
             pointerEvents: 'none',
           }}
         />
@@ -454,13 +454,13 @@ export default function CacDashboard() {
           <Box>
             <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.8, flexWrap: 'wrap', gap: 0.8 }}>
               <Chip
-                icon={<VerifiedUser sx={{ fontSize: '14px !important', color: '#38bdf8 !important' }} />}
+                icon={<VerifiedUser sx={{ fontSize: '14px !important', color: '#0284c7 !important' }} />}
                 label="Cluster Academic Coordinator (संकुल अकादमिक समन्वयक)"
                 size="small"
                 sx={{
-                  background: 'rgba(56, 189, 248, 0.16)',
-                  color: '#7dd3fc',
-                  border: '1px solid rgba(56, 189, 248, 0.35)',
+                  background: '#f0f9ff',
+                  color: '#0284c7',
+                  border: '1px solid #bae6fd',
                   fontWeight: 800,
                   fontSize: '0.72rem',
                   height: 24,
@@ -470,8 +470,9 @@ export default function CacDashboard() {
                 label={`Cluster CD: ${cluster.cluster_cd || '220509001'}`}
                 size="small"
                 sx={{
-                  background: 'rgba(255, 255, 255, 0.12)',
-                  color: '#ffffff',
+                  background: '#f1f5f9',
+                  color: '#475569',
+                  border: '1px solid #e2e8f0',
                   fontWeight: 700,
                   fontSize: '0.72rem',
                   height: 24,
@@ -481,9 +482,9 @@ export default function CacDashboard() {
                 label={`${cluster.block_name || 'RAIPUR URBAN'} • ${cluster.district_name || 'RAIPUR'}`}
                 size="small"
                 sx={{
-                  background: 'rgba(245, 158, 11, 0.18)',
-                  color: '#fbbf24',
-                  border: '1px solid rgba(245, 158, 11, 0.3)',
+                  background: '#fffbeb',
+                  color: '#d97706',
+                  border: '1px solid #fde68a',
                   fontWeight: 700,
                   fontSize: '0.72rem',
                   height: 24,
@@ -495,7 +496,7 @@ export default function CacDashboard() {
               variant="h5"
               sx={{
                 fontWeight: 900,
-                color: '#ffffff',
+                color: '#0f172a',
                 fontFamily: '"Plus Jakarta Sans", sans-serif',
                 letterSpacing: '-0.02em',
                 lineHeight: 1.2,
@@ -506,8 +507,8 @@ export default function CacDashboard() {
               {cluster.cluster_name || 'RAIPUR CLUSTER 1'} — Academic Command Center
             </Typography>
 
-            <Typography sx={{ color: 'rgba(255,255,255,0.78)', fontSize: '0.82rem', fontWeight: 500 }}>
-              Cluster Coordinator: <strong style={{ color: '#ffffff' }}>{user?.full_name || 'Shri Sunil Sharma'}</strong> · Academic Session 2026-27 · Vidya Samiksha Kendra CG
+            <Typography sx={{ color: '#64748b', fontSize: '0.82rem', fontWeight: 500 }}>
+              Cluster Coordinator: <strong style={{ color: '#0f172a' }}>{user?.full_name || 'Shri Sunil Sharma'}</strong> · Academic Session 2026-27 · Vidya Samiksha Kendra CG
             </Typography>
           </Box>
 
@@ -518,14 +519,16 @@ export default function CacDashboard() {
               startIcon={<Print />}
               onClick={handlePrint}
               sx={{
-                borderColor: 'rgba(255,255,255,0.3)',
-                color: '#ffffff',
+                borderColor: '#cbd5e1',
+                color: '#334155',
                 fontWeight: 700,
                 fontSize: '0.78rem',
                 textTransform: 'none',
                 borderRadius: 2,
                 px: 1.6,
-                '&:hover': { borderColor: '#ffffff', background: 'rgba(255,255,255,0.08)' }
+                background: '#ffffff',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+                '&:hover': { borderColor: '#94a3b8', background: '#f8fafc' }
               }}
             >
               Export Cluster Dossier
@@ -535,11 +538,13 @@ export default function CacDashboard() {
               onClick={() => loadData(true)}
               disabled={refreshing}
               sx={{
-                background: 'rgba(255,255,255,0.12)',
-                color: '#ffffff',
+                background: '#ffffff',
+                color: '#64748b',
+                border: '1px solid #e2e8f0',
                 borderRadius: 2,
                 p: 0.9,
-                '&:hover': { background: 'rgba(255,255,255,0.22)' }
+                boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+                '&:hover': { background: '#f1f5f9', color: '#0f172a' }
               }}
             >
               <Refresh sx={{ fontSize: 18, animation: refreshing ? 'spin 1s linear infinite' : 'none' }} />

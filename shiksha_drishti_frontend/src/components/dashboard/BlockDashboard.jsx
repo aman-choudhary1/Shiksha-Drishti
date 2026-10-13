@@ -346,10 +346,10 @@ export default function BlockDashboard() {
           mb: 2.5,
           position: 'relative',
           overflow: 'hidden',
-          background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0369a1 100%)',
-          boxShadow: '0 12px 36px rgba(15, 23, 42, 0.18)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          color: '#ffffff',
+          background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 50%, #eff6ff 100%)',
+          boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03), 0 10px 25px -5px rgba(2, 132, 199, 0.05)',
+          border: '1px solid #e2e8f0',
+          color: '#0f172a',
         }}
       >
         <Box
@@ -360,7 +360,7 @@ export default function BlockDashboard() {
             width: 220,
             height: 220,
             borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(56, 189, 248, 0.25) 0%, rgba(0,0,0,0) 70%)',
+            background: 'radial-gradient(circle, rgba(2, 132, 199, 0.08) 0%, rgba(0,0,0,0) 70%)',
             pointerEvents: 'none',
           }}
         />
@@ -369,13 +369,13 @@ export default function BlockDashboard() {
           <Box>
             <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1, flexWrap: 'wrap', gap: 0.5 }}>
               <Chip
-                icon={<VerifiedUser sx={{ color: '#38bdf8 !important', fontSize: '14px !important' }} />}
+                icon={<VerifiedUser sx={{ color: '#0284c7 !important', fontSize: '14px !important' }} />}
                 label={`विकासखंड शिक्षा कमान केंद्र (BEO ${blockInfo.block_name || 'Block'})`}
                 size="small"
                 sx={{
-                  background: 'rgba(56, 189, 248, 0.15)',
-                  color: '#7dd3fc',
-                  border: '1px solid rgba(56, 189, 248, 0.3)',
+                  background: '#f0f9ff',
+                  color: '#0284c7',
+                  border: '1px solid #bae6fd',
                   fontWeight: 800,
                   fontSize: '0.7rem',
                   height: 24,
@@ -385,8 +385,9 @@ export default function BlockDashboard() {
                 label="Academic Year 2025-26"
                 size="small"
                 sx={{
-                  background: 'rgba(255, 255, 255, 0.08)',
-                  color: '#cbd5e1',
+                  background: '#f1f5f9',
+                  color: '#475569',
+                  border: '1px solid #e2e8f0',
                   fontSize: '0.7rem',
                   fontWeight: 600,
                   height: 24,
@@ -396,20 +397,20 @@ export default function BlockDashboard() {
                 label="Block Assessment Analytics"
                 size="small"
                 sx={{
-                  background: 'rgba(16, 185, 129, 0.15)',
-                  color: '#6ee7b7',
+                  background: '#ecfdf5',
+                  color: '#047857',
                   fontSize: '0.7rem',
                   fontWeight: 700,
-                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                  border: '1px solid #a7f3d0',
                   height: 24,
                 }}
               />
             </Stack>
 
-            <Typography variant="h5" sx={{ fontWeight: 800, letterSpacing: -0.4, color: '#f8fafc', fontSize: { xs: '1.3rem', md: '1.65rem' } }}>
+            <Typography variant="h5" sx={{ fontWeight: 800, letterSpacing: -0.4, color: '#0f172a', fontSize: { xs: '1.3rem', md: '1.65rem' } }}>
               Block {blockInfo.block_name || 'ABHANPUR'} Education Analytics
             </Typography>
-            <Typography variant="caption" sx={{ color: '#94a3b8', mt: 0.3, fontWeight: 500, display: 'block' }}>
+            <Typography variant="caption" sx={{ color: '#64748b', mt: 0.3, fontWeight: 500, display: 'block' }}>
               Samagra Shiksha Chhattisgarh • Block Code: {blockInfo.block_cd || '220510'} | District: {blockInfo.district_name || 'RAIPUR'} | BEO: {blockInfo.officer_name || 'Shri Rajesh Kumar Sahu'}
             </Typography>
           </Box>
@@ -422,14 +423,15 @@ export default function BlockDashboard() {
                 onClick={fetchBlockData}
                 size="small"
                 sx={{
-                  borderColor: 'rgba(255, 255, 255, 0.2)',
-                  color: '#ffffff',
-                  fontWeight: 600,
+                  borderColor: '#cbd5e1',
+                  color: '#334155',
+                  fontWeight: 700,
                   borderRadius: 2,
                   textTransform: 'none',
                   fontSize: '0.78rem',
-                  backdropFilter: 'blur(8px)',
-                  '&:hover': { borderColor: '#38bdf8', background: 'rgba(56, 189, 248, 0.1)' }
+                  background: '#ffffff',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+                  '&:hover': { borderColor: '#94a3b8', background: '#f8fafc' }
                 }}
               >
                 Refresh Data
@@ -440,13 +442,13 @@ export default function BlockDashboard() {
                 onClick={() => window.print()}
                 size="small"
                 sx={{
-                  background: 'linear-gradient(135deg, #0284c7 0%, #2563eb 100%)',
+                  background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
                   color: '#ffffff',
-                  fontWeight: 700,
+                  fontWeight: 800,
                   borderRadius: 2,
                   textTransform: 'none',
                   fontSize: '0.78rem',
-                  boxShadow: '0 4px 14px rgba(2, 132, 199, 0.35)',
+                  boxShadow: '0 4px 14px rgba(2, 132, 199, 0.25)',
                 }}
               >
                 Export BEO Report

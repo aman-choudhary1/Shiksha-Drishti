@@ -15,7 +15,7 @@ import {
 import { useSnackbar } from 'notistack';
 import { questionBankApi } from '../../services/api';
 
-const API_SERVER_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:4000';
+const API_SERVER_URL = (import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:4000').replace(/\s+/g, '');
 
 const PRESET_DIAGRAMS = [
   { label: 'Q2: Glass (ग्लास)', url: '/uploads/questions/1021/page_2_img_1_jpeg.png' },
