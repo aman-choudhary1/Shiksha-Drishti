@@ -188,4 +188,8 @@ async function seedMorePapers() {
   }
 }
 
-seedMorePapers().then(() => process.exit(0)).catch(() => process.exit(1));
+if (require.main === module) {
+  seedMorePapers().then(() => process.exit(0)).catch(() => process.exit(1));
+}
+
+module.exports = seedMorePapers;

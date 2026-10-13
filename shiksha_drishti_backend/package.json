@@ -8,6 +8,8 @@
     "dev": "node --watch server.js",
     "migrate": "node migrations/run_migrations.js",
     "seed": "node migrations/seed_from_attendance.js",
+    "seed:mobile": "node migrations/seed_mobile_mock_data.js && node migrations/seed_more_mock_papers.js",
+    "setup": "node migrations/run_migrations.js && node migrations/create_assessment_tables.js && npm run seed:mobile",
     "test": "node --test src/controllers/test/*.test.js"
   },
   "dependencies": {

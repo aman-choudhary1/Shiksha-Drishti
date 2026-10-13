@@ -99,4 +99,8 @@ async function runAssessmentMigration() {
   }
 }
 
-runAssessmentMigration().then(() => process.exit(0)).catch(() => process.exit(1));
+if (require.main === module) {
+  runAssessmentMigration().then(() => process.exit(0)).catch(() => process.exit(1));
+}
+
+module.exports = runAssessmentMigration;
