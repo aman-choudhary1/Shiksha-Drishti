@@ -82,7 +82,6 @@ async function login(req, res) {
             (SELECT COUNT(*) FROM sd_students st
              WHERE st.school_udise = ta.school_udise
                AND st.class_id = ta.class_id
-               AND st.academic_year_id = ta.academic_year_id
                AND st.is_active = true) AS student_count
      FROM sd_teacher_assignments ta
      JOIN sd_classes c ON c.id = ta.class_id
@@ -165,7 +164,6 @@ async function me(req, res) {
             (SELECT COUNT(*) FROM sd_students st
              WHERE st.school_udise = ta.school_udise
                AND st.class_id = ta.class_id
-               AND st.academic_year_id = ta.academic_year_id
                AND st.is_active = true) AS student_count
      FROM sd_teacher_assignments ta
      JOIN sd_classes c ON c.id = ta.class_id

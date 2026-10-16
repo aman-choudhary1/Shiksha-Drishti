@@ -17,7 +17,7 @@ async function listAssessments(req, res) {
             a.assessment_name, a.assessment_type, a.status,
             a.created_at, a.submitted_at, a.updated_at,
             ay.year_label, c.class_name, c.class_num, s.school_name,
-            u.full_name AS created_by_name,
+            COALESCE(u.full_name, 'Teacher / Staff') AS created_by_name,
             -- Completion stats from view
             vs.total_students,
             vs.students_with_subject_marks,
@@ -26,7 +26,7 @@ async function listAssessments(req, res) {
      JOIN sd_academic_years ay ON ay.id = a.academic_year_id
      JOIN sd_classes c ON c.id = a.class_id
      JOIN sd_schools s ON s.udise_code = a.school_udise
-     JOIN sd_users u ON u.id = a.created_by
+     LEFT JOIN sd_users u ON u.id = a.created_by
      LEFT JOIN vw_sd_assessment_status vs ON vs.assessment_id = a.id
      WHERE ($1::bigint IS NULL OR a.school_udise = $1)
        AND ($2::bigint IS NULL OR a.class_id = $2)

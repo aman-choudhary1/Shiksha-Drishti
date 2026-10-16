@@ -29,22 +29,40 @@ export default function StudentsList() {
   const { user, assignments } = useAuth();
   const [selectedClassId, setSelectedClassId] = useState('');
   const [students, setStudents] = useState([]);
+  const [allClasses, setAllClasses] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [genderFilter, setGenderFilter] = useState('ALL');
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'table'
 
-  // Default to first assigned class
   useEffect(() => {
-    if (assignments?.length > 0 && !selectedClassId) {
-      setSelectedClassId(String(assignments[0].class_id));
+    masterApi.getClasses().then(res => setAllClasses(res.data || [])).catch(() => {});
+  }, []);
+
+  const combinedClasses = useMemo(() => {
+    if (!assignments || assignments.length === 0) return allClasses.map(c => ({ class_id: c.id, class_name: c.class_name, class_num: c.class_num }));
+    const assignedIds = new Set(assignments.map(a => String(a.class_id)));
+    const others = (allClasses || []).filter(c => !assignedIds.has(String(c.id))).map(c => ({
+      class_id: c.id,
+      class_name: c.class_name,
+      class_num: c.class_num,
+      student_count: null,
+      isOther: true
+    }));
+    return [...assignments, ...others];
+  }, [assignments, allClasses]);
+
+  // Default to first assigned class or first available class
+  useEffect(() => {
+    if (combinedClasses.length > 0 && !selectedClassId) {
+      setSelectedClassId(String(combinedClasses[0].class_id));
     }
-  }, [assignments, selectedClassId]);
+  }, [combinedClasses, selectedClassId]);
 
   const activeClassObj = useMemo(() => {
-    return (assignments || []).find(a => String(a.class_id) === String(selectedClassId));
-  }, [assignments, selectedClassId]);
+    return combinedClasses.find(a => String(a.class_id) === String(selectedClassId));
+  }, [combinedClasses, selectedClassId]);
 
   const fetchStudents = async () => {
     if (!selectedClassId) return;
@@ -131,9 +149,9 @@ export default function StudentsList() {
                 '& .MuiSelect-select': { py: 0.8 },
               }}
             >
-              {(assignments || []).map(a => (
+              {(combinedClasses || []).map(a => (
                 <MenuItem key={a.class_id} value={String(a.class_id)}>
-                  {a.class_name} ({a.student_count || 0} Students)
+                  {a.class_name} {a.student_count !== null && a.student_count !== undefined ? `(${a.student_count} Students)` : ''} {a.isOther ? '· School Class' : '· Assigned'}
                 </MenuItem>
               ))}
             </Select>

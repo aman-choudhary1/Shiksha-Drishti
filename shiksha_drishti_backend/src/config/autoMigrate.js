@@ -195,7 +195,7 @@ async function autoMigrate() {
     `);
 
     // 5. Ensure Default Demo Teachers exist
-    const defaultPassHash = await bcrypt.hash('Password@123', 10);
+    const defaultPassHash = await bcrypt.hash('Admin@123', 10);
     await client.query(`
       INSERT INTO sd_users (id, username, email, password_hash, full_name, role, primary_udise, is_active)
       VALUES 
@@ -204,9 +204,44 @@ async function autoMigrate() {
       ON CONFLICT (id) DO UPDATE SET password_hash = EXCLUDED.password_hash, primary_udise = EXCLUDED.primary_udise;
     `, [defaultPassHash]);
 
-    // Ensure teacher assignments for Classes 1 to 5
+    // Ensure fast, accurate vw_sd_assessment_status view
+    await client.query(`
+      CREATE OR REPLACE VIEW vw_sd_assessment_status AS
+      SELECT 
+          a.id AS assessment_id,
+          a.school_udise,
+          a.class_id,
+          a.academic_year_id,
+          a.assessment_name,
+          a.status,
+          a.created_by,
+          COALESCE((
+            SELECT COUNT(DISTINCT sm.student_id) 
+            FROM sd_subject_marks sm 
+            WHERE sm.assessment_id = a.id AND sm.marks_obtained IS NOT NULL
+          ), 0) AS students_with_subject_marks,
+          COALESCE((
+            SELECT COUNT(DISTINCT qm.student_id) 
+            FROM sd_question_marks qm 
+            WHERE qm.assessment_id = a.id
+          ), 0) AS students_with_question_marks,
+          COALESCE(
+            NULLIF((SELECT COUNT(*) FROM sd_students st 
+                    WHERE st.school_udise = a.school_udise 
+                      AND st.class_id = a.class_id 
+                      AND st.academic_year_id = a.academic_year_id 
+                      AND st.is_active = true), 0),
+            (SELECT COUNT(*) FROM sd_students st 
+             WHERE st.school_udise = a.school_udise 
+               AND st.class_id = a.class_id 
+               AND st.is_active = true)
+          ) AS total_students
+      FROM sd_assessments a;
+    `);
+
+    // Ensure teacher assignments for Classes 1 to 10
     for (const uId of [2, 3]) {
-      for (let c = 1; c <= 5; c++) {
+      for (let c = 1; c <= 10; c++) {
         await client.query(`
           INSERT INTO sd_teacher_assignments (user_id, school_udise, class_id, academic_year_id, is_active)
           VALUES ($1, 22050904705, $2, 3, true)

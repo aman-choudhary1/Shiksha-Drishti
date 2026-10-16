@@ -81,24 +81,33 @@ ALTER TABLE sd_subject_marks
 -- sd_assessment_status_view: Convenience view for dashboard status cards
 -- --------------------------------------------------------------------------
 CREATE OR REPLACE VIEW vw_sd_assessment_status AS
-SELECT
-  a.id AS assessment_id,
-  a.school_udise,
-  a.class_id,
-  a.academic_year_id,
-  a.assessment_name,
-  a.status,
-  a.created_by,
-  COUNT(DISTINCT sm.student_id) AS students_with_subject_marks,
-  COUNT(DISTINCT qm.student_id) AS students_with_question_marks,
-  COUNT(DISTINCT s.id)          AS total_students
-FROM sd_assessments a
-LEFT JOIN sd_students s
-  ON s.school_udise = a.school_udise
-  AND s.class_id = a.class_id
-  AND s.academic_year_id = a.academic_year_id
-  AND s.is_active = true
-LEFT JOIN sd_subject_marks sm ON sm.assessment_id = a.id AND sm.marks_obtained IS NOT NULL
-LEFT JOIN sd_question_marks qm ON qm.assessment_id = a.id
-GROUP BY a.id, a.school_udise, a.class_id, a.academic_year_id,
-         a.assessment_name, a.status, a.created_by;
+SELECT 
+    a.id AS assessment_id,
+    a.school_udise,
+    a.class_id,
+    a.academic_year_id,
+    a.assessment_name,
+    a.status,
+    a.created_by,
+    COALESCE((
+      SELECT COUNT(DISTINCT sm.student_id) 
+      FROM sd_subject_marks sm 
+      WHERE sm.assessment_id = a.id AND sm.marks_obtained IS NOT NULL
+    ), 0) AS students_with_subject_marks,
+    COALESCE((
+      SELECT COUNT(DISTINCT qm.student_id) 
+      FROM sd_question_marks qm 
+      WHERE qm.assessment_id = a.id
+    ), 0) AS students_with_question_marks,
+    COALESCE(
+      NULLIF((SELECT COUNT(*) FROM sd_students st 
+              WHERE st.school_udise = a.school_udise 
+                AND st.class_id = a.class_id 
+                AND st.academic_year_id = a.academic_year_id 
+                AND st.is_active = true), 0),
+      (SELECT COUNT(*) FROM sd_students st 
+       WHERE st.school_udise = a.school_udise 
+         AND st.class_id = a.class_id 
+         AND st.is_active = true)
+    ) AS total_students
+FROM sd_assessments a;

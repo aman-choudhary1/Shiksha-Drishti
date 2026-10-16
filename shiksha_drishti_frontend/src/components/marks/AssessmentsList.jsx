@@ -8,12 +8,14 @@ import {
 import {
   Add, Search, AssignmentTurnedIn, Edit, FactCheck,
   CheckCircle, PendingActions, School,
-  Refresh, FilterList, ArrowForward,
+  Refresh, FilterList, ArrowForward, CloudUpload,
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
+import { Tooltip, CircularProgress } from '@mui/material';
 import { assessmentApi } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import educationSvg from '../../assets/Education-bro.svg';
+import BulkExcelMarksModal from './BulkExcelMarksModal';
 
 const statusConfig = {
   DRAFT: {
@@ -67,6 +69,29 @@ export default function AssessmentsList() {
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('ALL');
+  const [excelModalOpen, setExcelModalOpen] = useState(false);
+  const [excelTargetAsmt, setExcelTargetAsmt] = useState(null);
+  const [excelSubjects, setExcelSubjects] = useState([]);
+  const [excelReportCard, setExcelReportCard] = useState([]);
+  const [excelLoadingId, setExcelLoadingId] = useState(null);
+  const [successMsg, setSuccessMsg] = useState('');
+
+  const handleOpenExcelModal = async (asmt) => {
+    setExcelTargetAsmt(asmt);
+    setExcelLoadingId(asmt.id);
+    setError('');
+    try {
+      const res = await assessmentApi.getSubjectMarks(asmt.id);
+      setExcelSubjects(res.data.subjects || []);
+      setExcelReportCard(res.data.report_card || []);
+      setExcelModalOpen(true);
+    } catch (err) {
+      console.error(err);
+      setError('Failed to load assessment details for Excel entry.');
+    } finally {
+      setExcelLoadingId(null);
+    }
+  };
 
   const fetchAssessments = async () => {
     setLoading(true);
@@ -245,8 +270,14 @@ export default function AssessmentsList() {
         </Stack>
       </Paper>
 
+      {successMsg && (
+        <Alert severity="success" sx={{ mb: 2.5, borderRadius: 2 }} onClose={() => setSuccessMsg('')}>
+          {successMsg}
+        </Alert>
+      )}
+
       {error && (
-        <Alert severity="error" sx={{ mb: 2.5, borderRadius: 2.5 }} action={
+        <Alert severity="error" sx={{ mb: 2.5, borderRadius: 2 }} action={
           <Button color="inherit" size="small" onClick={fetchAssessments}>Retry</Button>
         }>
           {error}
@@ -305,9 +336,9 @@ export default function AssessmentsList() {
           width: '100%',
         }}>
           {filtered.map((asmt, i) => {
-            const progress = Math.round(
-              (asmt.students_with_subject_marks / Math.max(asmt.total_students, 1)) * 100
-            );
+            const entered = Number(asmt.students_with_subject_marks) || 0;
+            const total = Math.max(Number(asmt.total_students) || 0, entered, 1);
+            const progress = Math.min(100, Math.round((entered / total) * 100));
             const statusCfg = statusConfig[asmt.status] || statusConfig.DRAFT;
             const classNum = asmt.class_name?.match(/\d+/)?.[0] || 'C';
 
@@ -425,7 +456,7 @@ export default function AssessmentsList() {
                           Marks Entry Progress
                         </Typography>
                         <Typography sx={{ fontSize: '0.74rem', fontWeight: 800, color: progress === 100 ? '#10b981' : '#0284c7' }}>
-                          {asmt.students_with_subject_marks || 0}/{asmt.total_students || 0}
+                          {entered}/{total}
                           <Typography component="span" sx={{ fontSize: '0.68rem', color: '#94a3b8', fontWeight: 600, ml: 0.5 }}>
                             ({progress}%)
                           </Typography>
@@ -496,6 +527,38 @@ export default function AssessmentsList() {
                       >
                         LO Marks
                       </Button>
+
+                      {!['SUBMITTED', 'LOCKED'].includes(asmt.status) && (
+                        <Tooltip title="Bulk Excel Marks Entry">
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            onClick={() => handleOpenExcelModal(asmt)}
+                            disabled={excelLoadingId === asmt.id}
+                            sx={{
+                              minWidth: 42,
+                              px: 1,
+                              py: 0.75,
+                              borderRadius: 2,
+                              borderColor: '#10b981',
+                              color: '#059669',
+                              background: 'rgba(16, 185, 129, 0.04)',
+                              borderWidth: '1.2px',
+                              '&:hover': {
+                                borderWidth: '1.2px',
+                                background: 'rgba(16, 185, 129, 0.12)',
+                                borderColor: '#059669',
+                              },
+                            }}
+                          >
+                            {excelLoadingId === asmt.id ? (
+                              <CircularProgress size={14} color="inherit" />
+                            ) : (
+                              <CloudUpload sx={{ fontSize: 16 }} />
+                            )}
+                          </Button>
+                        </Tooltip>
+                      )}
                     </Stack>
                   </CardContent>
                 </Card>
@@ -503,6 +566,25 @@ export default function AssessmentsList() {
             );
           })}
         </Box>
+      )}
+
+      {/* Bulk Excel Marks Modal */}
+      {excelTargetAsmt && (
+        <BulkExcelMarksModal
+          open={excelModalOpen}
+          onClose={() => {
+            setExcelModalOpen(false);
+            setExcelTargetAsmt(null);
+          }}
+          assessment={excelTargetAsmt}
+          subjects={excelSubjects}
+          reportCard={excelReportCard}
+          schoolName={user?.school_name}
+          onSuccess={(count) => {
+            fetchAssessments();
+            setSuccessMsg(`Successfully saved ${count} marks from Excel for ${excelTargetAsmt.class_name}!`);
+          }}
+        />
       )}
     </Box>
   );

@@ -11,11 +11,14 @@ import {
   Save as SaveIcon, Send as SendIcon, CheckCircle,
   ArrowBack, Refresh, Search, FactCheck,
   Calculate, Person, EventBusy, GroupAdd,
+  FileDownload, CloudUpload, Description,
 } from '@mui/icons-material';
 
 import { motion } from 'framer-motion';
 import { assessmentApi } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import BulkExcelMarksModal from './BulkExcelMarksModal';
+import { downloadMarksExcelTemplate } from '../../utils/excelMarksTemplate';
 
 // Controlled cell for marks input with instant validation, 'AB' support, and keyboard navigation
 function CompactMarksCell({ value, isAbsent, maxMarks, onChange, onToggleAbsent, disabled }) {
@@ -161,6 +164,27 @@ export default function ClassReportCard() {
   const [statusFilter, setStatusFilter] = useState('ALL'); // ALL, COMPLETE, PENDING, ABSENT
   const [batchDialogOpen, setBatchDialogOpen] = useState(false);
   const [batchSelectedIds, setBatchSelectedIds] = useState(new Set());
+  const [excelModalOpen, setExcelModalOpen] = useState(false);
+  const [downloadingTemplate, setDownloadingTemplate] = useState(false);
+  const [excelSuccessMsg, setExcelSuccessMsg] = useState('');
+
+  const handleQuickDownloadTemplate = async () => {
+    setDownloadingTemplate(true);
+    setError('');
+    try {
+      await downloadMarksExcelTemplate({
+        assessment,
+        subjects,
+        reportCard,
+        schoolName: assessment?.school_name,
+      });
+    } catch (err) {
+      console.error(err);
+      setError('Failed to download Excel template: ' + (err.message || 'Unknown error'));
+    } finally {
+      setDownloadingTemplate(false);
+    }
+  };
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -459,7 +483,7 @@ export default function ClassReportCard() {
               </Box>
             </Box>
 
-            <Stack direction="row" spacing={1} alignItems="center">
+            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
               <Chip
                 label={isLocked ? 'Submitted' : 'Draft'}
                 size="small"
@@ -468,9 +492,54 @@ export default function ClassReportCard() {
                   color: isLocked ? '#34d399' : '#fcd34d',
                   fontWeight: 800,
                   fontSize: '0.72rem',
-                  borderRadius: '4px',
+                  borderRadius: 1.5,
                 }}
               />
+
+              {!isLocked && (
+                <>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={downloadingTemplate ? <CircularProgress size={14} color="inherit" /> : <FileDownload sx={{ fontSize: 16 }} />}
+                    onClick={handleQuickDownloadTemplate}
+                    disabled={downloadingTemplate}
+                    sx={{
+                      color: '#ffffff',
+                      borderColor: 'rgba(255, 255, 255, 0.35)',
+                      borderRadius: 1.5,
+                      fontSize: '0.76rem',
+                      fontWeight: 700,
+                      py: 0.5,
+                      textTransform: 'none',
+                      background: 'rgba(255, 255, 255, 0.08)',
+                      '&:hover': { borderColor: '#ffffff', background: 'rgba(255, 255, 255, 0.18)' },
+                    }}
+                  >
+                    {downloadingTemplate ? 'Downloading...' : 'Excel Template'}
+                  </Button>
+
+                  <Button
+                    variant="contained"
+                    size="small"
+                    startIcon={<CloudUpload sx={{ fontSize: 16 }} />}
+                    onClick={() => setExcelModalOpen(true)}
+                    sx={{
+                      background: 'linear-gradient(135deg, #10b981, #059669)',
+                      color: '#ffffff',
+                      borderRadius: 1.5,
+                      fontSize: '0.76rem',
+                      fontWeight: 700,
+                      py: 0.5,
+                      textTransform: 'none',
+                      boxShadow: '0 2px 10px rgba(16, 185, 129, 0.3)',
+                      '&:hover': { background: 'linear-gradient(135deg, #059669, #047857)' },
+                    }}
+                  >
+                    Upload Excel
+                  </Button>
+                </>
+              )}
 
               <Button
                 variant="outlined"
@@ -480,10 +549,11 @@ export default function ClassReportCard() {
                 sx={{
                   color: '#ffffff',
                   borderColor: 'rgba(255, 255, 255, 0.4)',
-                  borderRadius: '4px',
+                  borderRadius: 1.5,
                   fontSize: '0.78rem',
                   fontWeight: 700,
                   py: 0.5,
+                  textTransform: 'none',
                   '&:hover': { borderColor: '#ffffff', background: 'rgba(255, 255, 255, 0.1)' },
                 }}
               >
@@ -525,9 +595,10 @@ export default function ClassReportCard() {
       </Grid>
 
       {/* Alerts */}
-      {error && <Alert severity="error" sx={{ mb: 2, borderRadius: '4px' }} onClose={() => setError('')}>{error}</Alert>}
-      {saveSuccess && <Alert severity="success" icon={<CheckCircle />} sx={{ mb: 2, borderRadius: '4px' }}>Marks saved successfully!</Alert>}
-      {isLocked && <Alert severity="info" sx={{ mb: 2, borderRadius: '4px' }}>This assessment has been submitted and is now locked for editing.</Alert>}
+      {error && <Alert severity="error" sx={{ mb: 2, borderRadius: 1.5 }} onClose={() => setError('')}>{error}</Alert>}
+      {saveSuccess && <Alert severity="success" icon={<CheckCircle />} sx={{ mb: 2, borderRadius: 1.5 }}>Marks saved successfully!</Alert>}
+      {excelSuccessMsg && <Alert severity="success" icon={<CheckCircle />} sx={{ mb: 2, borderRadius: 1.5 }} onClose={() => setExcelSuccessMsg('')}>{excelSuccessMsg}</Alert>}
+      {isLocked && <Alert severity="info" sx={{ mb: 2, borderRadius: 1.5 }}>This assessment has been submitted and is now locked for editing.</Alert>}
 
       {/* Compact Search & Filter Toolbar */}
       <Paper sx={{
@@ -564,30 +635,57 @@ export default function ClassReportCard() {
           />
 
           {!isLocked && (
-            <Button
-              variant="outlined"
-              size="small"
-              color="error"
-              startIcon={<GroupAdd sx={{ fontSize: 16 }} />}
-              onClick={() => {
-                setBatchSelectedIds(new Set());
-                setBatchDialogOpen(true);
-              }}
-              sx={{
-                borderRadius: '4px',
-                height: 34,
-                fontWeight: 700,
-                fontSize: '0.75rem',
-                borderColor: 'rgba(239, 68, 68, 0.4)',
-                background: 'rgba(239, 68, 68, 0.04)',
-                '&:hover': {
-                  background: 'rgba(239, 68, 68, 0.1)',
-                  borderColor: '#ef4444',
-                },
-              }}
-            >
-              ⚡ Batch Mark Absent
-            </Button>
+            <Stack direction="row" spacing={1}>
+              <Button
+                variant="outlined"
+                size="small"
+                color="primary"
+                startIcon={<CloudUpload sx={{ fontSize: 16 }} />}
+                onClick={() => setExcelModalOpen(true)}
+                sx={{
+                  borderRadius: 1.5,
+                  height: 34,
+                  fontWeight: 700,
+                  fontSize: '0.75rem',
+                  borderColor: 'rgba(2, 132, 199, 0.4)',
+                  background: 'rgba(2, 132, 199, 0.04)',
+                  color: '#0284c7',
+                  textTransform: 'none',
+                  '&:hover': {
+                    background: 'rgba(2, 132, 199, 0.1)',
+                    borderColor: '#0284c7',
+                  },
+                }}
+              >
+                📊 Excel Entry
+              </Button>
+
+              <Button
+                variant="outlined"
+                size="small"
+                color="error"
+                startIcon={<GroupAdd sx={{ fontSize: 16 }} />}
+                onClick={() => {
+                  setBatchSelectedIds(new Set());
+                  setBatchDialogOpen(true);
+                }}
+                sx={{
+                  borderRadius: 1.5,
+                  height: 34,
+                  fontWeight: 700,
+                  fontSize: '0.75rem',
+                  borderColor: 'rgba(239, 68, 68, 0.4)',
+                  background: 'rgba(239, 68, 68, 0.04)',
+                  textTransform: 'none',
+                  '&:hover': {
+                    background: 'rgba(239, 68, 68, 0.1)',
+                    borderColor: '#ef4444',
+                  },
+                }}
+              >
+                ⚡ Batch Mark Absent
+              </Button>
+            </Stack>
           )}
         </Box>
 
@@ -1014,6 +1112,20 @@ export default function ClassReportCard() {
           </Stack>
         </DialogActions>
       </Dialog>
+
+      {/* Bulk Excel Marks Modal */}
+      <BulkExcelMarksModal
+        open={excelModalOpen}
+        onClose={() => setExcelModalOpen(false)}
+        assessment={assessment}
+        subjects={subjects}
+        reportCard={reportCard}
+        schoolName={assessment?.school_name}
+        onSuccess={(count) => {
+          fetchData();
+          setExcelSuccessMsg(`Successfully imported and saved ${count} marks from Excel spreadsheet!`);
+        }}
+      />
     </Box>
   );
 }

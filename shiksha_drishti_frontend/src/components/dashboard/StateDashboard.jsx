@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Box, Typography, Grid, Card, CardContent, Chip, CircularProgress,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   Paper, LinearProgress, Alert, Tabs, Tab, Avatar, Divider,
   IconButton, Tooltip, Badge, ButtonGroup, Button, TextField, InputAdornment,
   Dialog, DialogTitle, DialogContent, DialogActions, Stack, alpha,
-  Select, MenuItem, FormControl, InputLabel
+  Select, MenuItem, FormControl, InputLabel, Collapse
 } from '@mui/material';
 import {
   AccountBalance, School, People, BarChart, AutoAwesome,
@@ -18,7 +19,7 @@ import {
   FullscreenExit, OpenInNew, Assessment, Timeline, CompareArrows,
   Balance, Speed, SwapHoriz, RestartAlt, Description, TableView,
   Summarize, FilterAlt, FilterAltOff, Print, PictureAsPdf, Code,
-  Language, ContentCopy, QrCode
+  Language, ContentCopy, QrCode, KeyboardArrowUp, KeyboardArrowDown
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -28,7 +29,7 @@ import {
 } from 'recharts';
 import { stateApi } from '../../services/api';
 import AdminStudentPerformance from './AdminStudentPerformance';
-import StateHeatmapMap from './StateHeatmapMap';
+import StateHeatmapMap, { DistrictRankingsCard } from './StateHeatmapMap';
 import SubjectTrendAnalysis from './SubjectTrendAnalysis';
 import ClassPromotionReadiness from './ClassPromotionReadiness';
 import TeacherSubmissionTracker from './TeacherSubmissionTracker';
@@ -41,6 +42,7 @@ import {
   exportQuestionDiagnosticsXlsx,
   exportTeacherComplianceXlsx,
 } from '../../utils/excelExport';
+import '../../index.css';
 
 // ── Color System & Grading ───────────────────────────────────────────────────
 const GRADE_COLORS = {
@@ -60,6 +62,32 @@ const TIER_COLORS = {
 
 const fadeUp = { initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.35, ease: 'easeOut' } };
 const stagger = (i) => ({ ...fadeUp, transition: { duration: 0.35, delay: i * 0.05, ease: 'easeOut' } });
+
+// ── Framer Motion Variants matching Attendance Admin Dashboard ──────────────
+const kpiGridVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.08,
+      delayChildren: 0.04,
+    },
+  },
+};
+
+const kpiCardVariants = {
+  hidden: { opacity: 0, y: 20, scale: 0.98 },
+  show: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: {
+      type: 'spring',
+      stiffness: 260,
+      damping: 20,
+    },
+  },
+};
 
 // ── Custom Light Tooltip for Recharts ────────────────────────────────────────
 function CustomLightTooltip({ active, payload, label }) {
@@ -92,112 +120,229 @@ function CustomLightTooltip({ active, payload, label }) {
   );
 }
 
-function StateKpiCard({ label, value, sub, color, gradientTo, icon, badge, onClick, actionText, delay = 0 }) {
+function StateKpiCard({
+  label,
+  value,
+  sub,
+  color = '#0284c7',
+  gradientTo,
+  waveColor = 'blue',
+  waveTop = '30%',
+  icon,
+  badge,
+  onClick,
+  actionText,
+  delay = 0,
+}) {
+  const gTo = gradientTo || color;
   return (
-    <motion.div {...stagger(delay)} style={{ height: '100%', width: '100%' }}>
+    <motion.div
+      variants={kpiCardVariants}
+      whileHover={{ y: -5, transition: { duration: 0.2, ease: 'easeOut' } }}
+      whileTap={{ scale: 0.98 }}
+      style={{
+        height: '100%',
+        width: '100%',
+        minWidth: 0,
+        maxWidth: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        boxSizing: 'border-box',
+      }}
+    >
       <Card
         elevation={0}
         onClick={onClick}
+        role={onClick ? 'button' : undefined}
+        tabIndex={onClick ? 0 : undefined}
+        className="metric-card-modern"
         sx={{
           p: 0,
           width: '100%',
+          maxWidth: '100%',
+          minWidth: 0,
           boxSizing: 'border-box',
-          borderRadius: 3,
-          border: '1px solid rgba(226,232,240,0.8)',
+          borderRadius: 1.5,
+          border: '1px solid #e2e8f0',
           background: '#ffffff',
-          boxShadow: '0 1px 4px rgba(15,23,42,0.06)',
+          boxShadow: '0 2px 8px -2px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(15, 23, 42, 0.02)',
           height: '100%',
           display: 'flex',
           flexDirection: 'column',
           position: 'relative',
           overflow: 'hidden',
           cursor: onClick ? 'pointer' : 'default',
-          transition: 'all 0.22s cubic-bezier(0.4, 0, 0.2, 1)',
+          transition: 'all 0.28s cubic-bezier(0.4, 0, 0.2, 1)',
           '&:hover': {
-            transform: 'translateY(-3px)',
-            borderColor: `${color}55`,
-            boxShadow: `0 14px 32px -6px ${alpha(color, 0.18)}, 0 4px 12px rgba(15,23,42,0.04)`,
+            borderColor: `${color}66`,
+            boxShadow: `0 14px 28px -4px ${alpha(color, 0.22)}, 0 4px 12px rgba(15, 23, 42, 0.04)`,
+            '& .kpi-icon-glow': {
+              transform: 'scale(1.08)',
+              boxShadow: `0 4px 16px ${alpha(color, 0.35)}`,
+            },
+            '& .kpi-arrow': {
+              transform: 'translateX(3px)',
+              opacity: 1,
+            },
+            '& .liquid-wave': {
+              opacity: 0.26,
+              animationDuration: '2.2s',
+            },
           },
         }}
       >
-        {/* Top accent stripe */}
+        {/* Top vibrant gradient stripe */}
         <Box sx={{
-          height: 3, flexShrink: 0,
-          background: `linear-gradient(90deg, ${color}, ${gradientTo || color})`,
+          position: 'absolute', top: 0, left: 0, right: 0,
+          height: 3.5, flexShrink: 0,
+          background: `linear-gradient(90deg, ${color}, ${gTo})`,
+          boxShadow: `0 1px 8px ${color}66`,
+          zIndex: 2,
         }} />
 
-        <Box sx={{ p: 2.25, flex: 1, display: 'flex', flexDirection: 'column', gap: 0 }}>
-          {/* Icon row */}
-          <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 1.5 }}>
-            <Box sx={{
-              width: 44, height: 44,
-              borderRadius: 2.5,
-              background: `linear-gradient(135deg, ${color}18 0%, ${color}2a 100%)`,
-              border: `1px solid ${color}22`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: color,
-              flexShrink: 0,
-            }}>
+        {/* Liquid Wave Effect Container (Attendance Admin Dashboard signature) */}
+        <div className="liquid-wave-container">
+          <div
+            className={`liquid-wave liquid-wave-${waveColor}`}
+            style={{
+              top: waveTop,
+              backgroundColor: color,
+            }}
+          />
+        </div>
+
+        {/* Card Content (Layered safely above moving water with zIndex 2) */}
+        <Box
+          className="metric-card-content"
+          sx={{
+            p: { xs: 1.75, sm: 2, md: 2.25 },
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            position: 'relative',
+            zIndex: 2,
+            minWidth: 0,
+            boxSizing: 'border-box',
+          }}
+        >
+          {/* Header Row: Title & Value on Left, Glowing Icon on Right */}
+          <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 1.25, minWidth: 0, mb: 1.25 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, minWidth: 0, flex: 1 }}>
+              <Typography sx={{
+                fontSize: '0.72rem',
+                fontWeight: 800,
+                color: '#64748b',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                lineHeight: 1.2,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}>
+                {label}
+              </Typography>
+
+              {/* Large Metric Number Display */}
+              <Typography sx={{
+                fontSize: { xs: '1.65rem', sm: '1.8rem', md: '1.95rem' },
+                fontWeight: 900,
+                color: '#0f172a',
+                lineHeight: 1.15,
+                letterSpacing: '-0.035em',
+                fontFamily: '"Plus Jakarta Sans", "Outfit", sans-serif',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}>
+                {value}
+              </Typography>
+            </Box>
+
+            {/* Glowing Icon Container (Attendance Dashboard signature) */}
+            <Box
+              className="kpi-icon-glow"
+              sx={{
+                width: 40, height: 40,
+                borderRadius: 1.5,
+                background: `linear-gradient(135deg, ${alpha(color, 0.16)} 0%, ${alpha(color, 0.06)} 100%)`,
+                border: `1px solid ${alpha(color, 0.3)}`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: color,
+                flexShrink: 0,
+                boxShadow: `0 2px 10px ${alpha(color, 0.16)}`,
+                transition: 'all 0.25s ease',
+              }}
+            >
               {icon}
             </Box>
+          </Box>
+
+          {/* Context Breakdown Footer with Pill Badge & Arrow */}
+          <Box sx={{
+            mt: 'auto',
+            pt: 1.1,
+            borderTop: '1px dashed #e2e8f0',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 0.75,
+            minWidth: 0,
+          }}>
+            {/* Left Subtext with colored status dot */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6, minWidth: 0, flex: 1, overflow: 'hidden' }}>
+              <Box sx={{
+                width: 6, height: 6,
+                borderRadius: '50%',
+                background: color,
+                boxShadow: `0 0 6px ${color}88`,
+                flexShrink: 0,
+              }} />
+              <Typography sx={{
+                fontSize: '0.71rem',
+                color: '#64748b',
+                fontWeight: 600,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}>
+                {sub}
+              </Typography>
+            </Box>
+
+            {/* Right Badge or Clickable Action Arrow */}
             {badge && (
               <Chip
                 label={badge}
                 size="small"
                 sx={{
-                  background: alpha(color, 0.08),
+                  background: alpha(color, 0.1),
                   color: color,
                   fontWeight: 800,
                   height: 20,
                   borderRadius: 1.5,
-                  border: `1px solid ${alpha(color, 0.22)}`,
+                  border: `1px solid ${alpha(color, 0.25)}`,
                   fontSize: '0.63rem',
-                  px: 0.25,
+                  px: 0.4,
+                  flexShrink: 0,
+                  letterSpacing: '0.02em',
+                }}
+              />
+            )}
+
+            {onClick && (
+              <KeyboardArrowRight
+                className="kpi-arrow"
+                sx={{
+                  fontSize: 16,
+                  color: color,
+                  opacity: 0.65,
+                  transition: 'all 0.2s ease',
+                  flexShrink: 0,
                 }}
               />
             )}
           </Box>
-
-          {/* Label */}
-          <Typography sx={{
-            fontSize: '0.7rem',
-            fontWeight: 700,
-            color: '#94a3b8',
-            textTransform: 'uppercase',
-            letterSpacing: '0.07em',
-            mb: 0.4,
-            lineHeight: 1,
-          }}>
-            {label}
-          </Typography>
-
-          {/* Big Value */}
-          <Typography sx={{
-            fontSize: { xs: '1.55rem', sm: '1.75rem' },
-            fontWeight: 900,
-            color: '#0f172a',
-            lineHeight: 1.1,
-            letterSpacing: '-0.04em',
-            fontFamily: '"Plus Jakarta Sans", sans-serif',
-            mb: 0.75,
-          }}>
-            {value}
-          </Typography>
-
-          {/* Sub info */}
-          {sub && (
-            <Typography sx={{
-              fontSize: '0.7rem',
-              color: '#64748b',
-              fontWeight: 500,
-              lineHeight: 1.45,
-              mt: 'auto',
-              pt: 0.75,
-              borderTop: `1px solid ${color}15`,
-            }}>
-              {sub}
-            </Typography>
-          )}
         </Box>
       </Card>
     </motion.div>
@@ -243,7 +388,7 @@ function LightCard({ children, sx = {}, delay = 0 }) {
         sx={{
           background: '#ffffff',
           border: '1px solid #e2e8f0',
-          borderRadius: 3,
+          borderRadius: 1.5,
           boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04), 0 4px 16px -2px rgba(15, 23, 42, 0.03)',
           height: '100%',
           width: '100%',
@@ -1001,7 +1146,33 @@ function OfficialDossierModal({ open, onClose, overview, districts, onDownloadHt
 // ── Main StateDashboard Component ──────────────────────────────────────────────
 export default function StateDashboard() {
   const { user } = useAuth();
-  const [activeTab,   setActiveTab]   = useState(0);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = parseInt(searchParams.get('tab'), 10);
+  const initialTab = !isNaN(tabParam) && tabParam >= 0 && tabParam <= 11 ? tabParam : 0;
+  const [activeTab, setActiveTabState] = useState(initialTab);
+
+  // Sync activeTab when URL search query changes (e.g. from sidebar clicks)
+  useEffect(() => {
+    const t = parseInt(searchParams.get('tab'), 10);
+    if (!isNaN(t) && t >= 0 && t <= 11) {
+      setActiveTabState(t);
+    } else if (!searchParams.get('tab')) {
+      setActiveTabState(0);
+    }
+  }, [searchParams]);
+
+  const setActiveTab = useCallback((newTab) => {
+    setActiveTabState(newTab);
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      if (newTab === 0) {
+        next.delete('tab');
+      } else {
+        next.set('tab', String(newTab));
+      }
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
   const [overview,    setOverview]    = useState(null);
   const [districts,   setDistricts]   = useState([]);
   const [questions,   setQuestions]   = useState(null);
@@ -1014,6 +1185,7 @@ export default function StateDashboard() {
   const [previewReportType, setPreviewReportType] = useState('executive-dossier');
 
   // Search & Multi-Dimension Filters
+  const [isFilterExpanded, setIsFilterExpanded] = useState(true);
   const [searchTerm, setSearchTerm]         = useState('');
   const [districtFilter, setDistrictFilter] = useState('ALL');
   const [classFilter, setClassFilter]       = useState('ALL');
@@ -1836,259 +2008,163 @@ export default function StateDashboard() {
   return (
     <Box sx={{
       width: '100%',
+      maxWidth: '100%',
+      overflowX: 'hidden',
       p: 0,
       display: 'flex',
       flexDirection: 'column',
       gap: 2,
       boxSizing: 'border-box',
     }}>
-      {/* ── Premium Light Hero Header ────────────────────────────────── */}
-      <motion.div {...fadeUp}>
-        <Box
-          sx={{
-            p: { xs: 2.5, md: 3 },
-            borderRadius: 3.5,
-            background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 50%, #eff6ff 100%)',
-            border: '1px solid #e2e8f0',
-            boxShadow: '0 1px 3px rgba(15,23,42,0.03), 0 10px 25px -5px rgba(2,132,199,0.06)',
-            color: '#0f172a',
-            position: 'relative',
-            overflow: 'hidden',
-          }}
-        >
-          {/* Decorative subtle ambient glows */}
-          <Box sx={{
-            position: 'absolute', top: -60, right: -60,
-            width: 260, height: 260, borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(2,132,199,0.08) 0%, transparent 70%)',
-            pointerEvents: 'none',
-          }} />
-          <Box sx={{
-            position: 'absolute', bottom: -50, left: '25%',
-            width: 200, height: 200, borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(99,102,241,0.06) 0%, transparent 70%)',
-            pointerEvents: 'none',
-          }} />
-
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2, position: 'relative' }}>
-            {/* Title */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Box sx={{
-                width: 52, height: 52, borderRadius: 2.5,
-                background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 4px 14px rgba(2,132,199,0.28)',
-                flexShrink: 0,
-              }}>
-                <AdminPanelSettings sx={{ color: '#ffffff', fontSize: 28 }} />
-              </Box>
-              <Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, flexWrap: 'wrap', mb: 0.5 }}>
-                  <Typography sx={{
-                    fontSize: { xs: '1.15rem', sm: '1.35rem', md: '1.55rem' },
-                    fontWeight: 900,
-                    color: '#0f172a',
-                    fontFamily: '"Plus Jakarta Sans", sans-serif',
-                    letterSpacing: '-0.02em',
-                    lineHeight: 1.2,
-                  }}>
-                    Chhattisgarh State Education Intelligence Command Center
-                  </Typography>
-                  <Box sx={{
-                    display: 'flex', alignItems: 'center', gap: 0.6,
-                    px: 1.2, py: 0.35, borderRadius: 20, flexShrink: 0,
-                    background: '#ecfdf5',
-                    border: '1px solid #a7f3d0',
-                    boxShadow: '0 1px 2px rgba(16,185,129,0.06)',
-                  }}>
-                    <Box sx={{
-                      width: 6, height: 6, borderRadius: '50%',
-                      background: '#10b981',
-                      boxShadow: '0 0 6px #10b981',
-                    }} />
-                    <Typography sx={{ color: '#047857', fontSize: '0.64rem', fontWeight: 800, letterSpacing: '0.06em' }}>
-                      LIVE TELEMETRY
-                    </Typography>
-                  </Box>
-                </Box>
-                <Typography sx={{ color: '#64748b', fontSize: { xs: '0.75rem', sm: '0.82rem' }, fontWeight: 500 }}>
-                  Samagra Shiksha · State Strategic Dashboard · Academic Year 2026–27 · Chhattisgarh
-                </Typography>
-              </Box>
-            </Box>
-
-            {/* Actions */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, flexWrap: 'wrap' }}>
-              <Button
-                variant="outlined"
-                onClick={() => setIsTvKioskOpen(true)}
-                startIcon={<Tv sx={{ fontSize: 17 }} />}
-                sx={{
-                  background: '#ffffff',
-                  color: '#334155',
-                  fontWeight: 700, fontSize: '0.78rem',
-                  borderRadius: 2.5, px: 2, py: 0.75,
-                  border: '1px solid #cbd5e1',
-                  boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
-                  textTransform: 'none',
-                  '&:hover': { background: '#f8fafc', borderColor: '#94a3b8' },
-                }}
-              >
-                TV Kiosk
-              </Button>
-
-              <Button
-                variant="contained"
-                onClick={() => setActiveTab(11)}
-                startIcon={<Download sx={{ fontSize: 17 }} />}
-                sx={{
-                  background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
-                  color: '#ffffff',
-                  fontWeight: 800, fontSize: '0.78rem',
-                  borderRadius: 2.5, px: 2.2, py: 0.8,
-                  boxShadow: '0 4px 14px rgba(2,132,199,0.25)',
-                  textTransform: 'none',
-                  '&:hover': { background: 'linear-gradient(135deg, #0369a1 0%, #075985 100%)' },
-                }}
-              >
-                Reports
-              </Button>
-
-              <Tooltip title="Refresh State Telemetry">
-                <IconButton
-                  onClick={fetchAll}
-                  sx={{
-                    background: '#ffffff',
-                    color: '#64748b',
-                    border: '1px solid #e2e8f0',
-                    borderRadius: 2, p: 0.9,
-                    boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
-                    '&:hover': { background: '#f1f5f9', color: '#0f172a' },
-                  }}
-                >
-                  <Refresh sx={{ fontSize: 18 }} />
-                </IconButton>
-              </Tooltip>
-            </Box>
-          </Box>
-
-          {/* Stats ticker */}
-          <Box sx={{
-            display: 'flex', alignItems: 'center',
-            gap: { xs: 1, sm: 1.5 },
-            mt: 2.5, pt: 2,
-            borderTop: '1px solid #e2e8f0',
-            flexWrap: 'wrap',
-          }}>
-            {[
-              { label: 'Districts', val: filteredKpis.total_districts || 33, color: '#0284c7' },
-              { label: 'Blocks', val: filteredKpis.total_blocks || 166, color: '#475569' },
-              { label: 'Clusters', val: filteredKpis.total_clusters || 556, color: '#475569' },
-              { label: 'Schools', val: (filteredKpis.total_schools || 0).toLocaleString(), color: '#0f172a' },
-              { label: 'Students Evaluated', val: (filteredKpis.evaluated_students || filteredKpis.total_students || 0).toLocaleString(), color: '#0f172a' },
-              { label: 'Average Score', val: `${filteredKpis.state_avg_score || 0}%`, color: '#0284c7' },
-              { label: 'Pass Rate', val: `${filteredKpis.pass_rate_pct || 0}%`, color: '#10b981' },
-            ].map((stat, i) => (
-              <Box key={i} sx={{
-                px: 1.75, py: 0.7, borderRadius: 2,
-                background: '#ffffff',
-                border: '1px solid #e2e8f0',
-                boxShadow: '0 1px 3px rgba(15,23,42,0.03)',
-                transition: 'all 0.15s ease',
-                '&:hover': {
-                  borderColor: '#cbd5e1',
-                  boxShadow: '0 3px 8px rgba(15,23,42,0.06)',
-                  transform: 'translateY(-1px)',
-                }
-              }}>
-                <Typography sx={{ color: '#64748b', fontSize: '0.62rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
-                  {stat.label}
-                </Typography>
-                <Typography sx={{ color: stat.color, fontSize: '0.96rem', fontWeight: 900, letterSpacing: '-0.02em', fontFamily: '"Plus Jakarta Sans", sans-serif' }}>
-                  {stat.val}
-                </Typography>
-              </Box>
-            ))}
-          </Box>
-        </Box>
-      </motion.div>
-
-      {/* ── State System Multi-Dimension Filter Bar (Inspired by VSK Admin) ─── */}
+      {/* ── State System Multi-Dimension Filter Bar (Top Position with Collapse/Expand) ─── */}
       <motion.div {...fadeUp}>
         <Card
           elevation={0}
           sx={{
-            p: { xs: 2, sm: 2.5 },
-            borderRadius: 3,
+            p: 0,
+            borderRadius: 1.5,
             background: '#ffffff',
             border: '1px solid #e2e8f0',
             borderLeft: '4.5px solid #0284c7',
-            boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04), 0 4px 14px -2px rgba(15, 23, 42, 0.03)',
+            boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04), 0 6px 18px -3px rgba(15, 23, 42, 0.05)',
             display: 'flex',
             flexDirection: 'column',
-            gap: 1.75,
             width: '100%',
             boxSizing: 'border-box',
+            overflow: 'hidden',
           }}
         >
-          {/* Header of Filter Bar */}
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1.5 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
+          {/* Header Bar of Unified Command Center Card */}
+          <Box sx={{
+            p: { xs: 1.5, sm: 2 },
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 1.5,
+          }}>
+            {/* Title & Filter Badges */}
+            <Box
+              onClick={() => setIsFilterExpanded(prev => !prev)}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1.25,
+                cursor: 'pointer',
+                userSelect: 'none',
+              }}
+            >
               <Box sx={{
-                width: 34, height: 34, borderRadius: 2,
-                background: 'rgba(2, 132, 199, 0.1)', color: '#0284c7',
-                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                width: 38, height: 38, borderRadius: 2.2,
+                background: 'linear-gradient(135deg, rgba(2, 132, 199, 0.12) 0%, rgba(2, 132, 199, 0.06) 100%)',
+                color: '#0284c7',
+                border: '1px solid rgba(2, 132, 199, 0.2)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0,
               }}>
-                <FilterAlt sx={{ fontSize: 20 }} />
+                <FilterAlt sx={{ fontSize: 21 }} />
               </Box>
               <Box>
-                <Typography sx={{ fontWeight: 800, color: '#0f172a', fontSize: '0.92rem', lineHeight: 1.2 }}>
-                  State Academic & Telemetry Filters
-                </Typography>
-                <Typography sx={{ color: '#64748b', fontSize: '0.72rem', fontWeight: 500 }}>
-                  Filter dashboard telemetry across districts, classes, subjects, and competency tiers
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                  <Typography sx={{ fontWeight: 800, color: '#0f172a', fontSize: '0.96rem', lineHeight: 1.2, fontFamily: '"Plus Jakarta Sans", sans-serif' }}>
+                    State Academic & Telemetry Filters
+                  </Typography>
+                  {activeFiltersCount > 0 ? (
+                    <Chip
+                      label={`${activeFiltersCount} Active Filter${activeFiltersCount > 1 ? 's' : ''}`}
+                      size="small"
+                      sx={{
+                        background: '#0284c7', color: '#ffffff', fontWeight: 800,
+                        fontSize: '0.66rem', height: 21, px: 0.5,
+                      }}
+                    />
+                  ) : (
+                    <Chip
+                      label="All Data"
+                      size="small"
+                      sx={{
+                        background: '#f1f5f9', color: '#64748b', fontWeight: 700,
+                        fontSize: '0.64rem', height: 20, px: 0.25,
+                      }}
+                    />
+                  )}
+                  {/* Subtle Live Telemetry indicator badge */}
+                  <Box sx={{
+                    display: { xs: 'none', md: 'flex' },
+                    alignItems: 'center', gap: 0.5,
+                    px: 0.9, py: 0.2, borderRadius: 12,
+                    background: '#ecfdf5',
+                    border: '1px solid #a7f3d0',
+                  }}>
+                    <Box sx={{
+                      width: 5, height: 5, borderRadius: '50%',
+                      background: '#10b981',
+                      boxShadow: '0 0 5px #10b981',
+                    }} />
+                    <Typography sx={{ color: '#047857', fontSize: '0.6rem', fontWeight: 800, letterSpacing: '0.04em' }}>
+                      LIVE
+                    </Typography>
+                  </Box>
+                </Box>
+                <Typography sx={{ color: '#64748b', fontSize: '0.72rem', fontWeight: 500, mt: 0.2 }}>
+                  {isFilterExpanded
+                    ? 'Filter telemetry across districts, classes, subjects, and competency tiers'
+                    : 'Filters collapsed · Click to expand or modify scope'}
                 </Typography>
               </Box>
-              {activeFiltersCount > 0 && (
-                <Chip
-                  label={`${activeFiltersCount} Active Filter${activeFiltersCount > 1 ? 's' : ''}`}
-                  size="small"
-                  sx={{
-                    background: '#0284c7', color: '#ffffff', fontWeight: 800,
-                    fontSize: '0.65rem', height: 22, px: 0.5,
-                  }}
-                />
-              )}
             </Box>
 
-            {/* Quick Actions (Reset & Export Hub) */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {/* Quick Actions & Collapse/Extend Button */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
               {activeFiltersCount > 0 && (
                 <Button
                   size="small"
                   variant="outlined"
                   onClick={handleResetAllFilters}
-                  startIcon={<RestartAlt sx={{ fontSize: 16 }} />}
+                  startIcon={<RestartAlt sx={{ fontSize: 15 }} />}
                   sx={{
                     borderRadius: 2,
                     fontSize: '0.72rem',
                     fontWeight: 700,
                     color: '#dc2626',
                     borderColor: '#fca5a5',
-                    py: 0.5,
-                    px: 1.5,
+                    py: 0.45,
+                    px: 1.25,
+                    textTransform: 'none',
                     '&:hover': { background: '#fef2f2', borderColor: '#dc2626' }
                   }}
                 >
-                  Reset All Filters
+                  Reset
                 </Button>
               )}
 
               <Button
                 size="small"
                 variant="outlined"
-                onClick={() => setActiveTab(7)}
-                startIcon={<Download sx={{ fontSize: 16 }} />}
+                onClick={() => setIsTvKioskOpen(true)}
+                startIcon={<Tv sx={{ fontSize: 15 }} />}
+                sx={{
+                  display: { xs: 'none', sm: 'inline-flex' },
+                  borderRadius: 2,
+                  fontSize: '0.72rem',
+                  fontWeight: 700,
+                  color: '#475569',
+                  borderColor: '#cbd5e1',
+                  background: '#ffffff',
+                  py: 0.45,
+                  px: 1.25,
+                  textTransform: 'none',
+                  '&:hover': { background: '#f8fafc', borderColor: '#94a3b8' }
+                }}
+              >
+                TV Kiosk
+              </Button>
+
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => setActiveTab(11)}
+                startIcon={<Download sx={{ fontSize: 15 }} />}
                 sx={{
                   borderRadius: 2,
                   fontSize: '0.72rem',
@@ -2096,376 +2172,355 @@ export default function StateDashboard() {
                   color: '#0284c7',
                   borderColor: '#bae6fd',
                   background: '#f0f9ff',
-                  py: 0.5,
-                  px: 1.5,
+                  py: 0.45,
+                  px: 1.25,
+                  textTransform: 'none',
                   '&:hover': { background: '#e0f2fe', borderColor: '#0284c7' }
                 }}
               >
-                Report Download Center
+                Reports
+              </Button>
+
+              <Tooltip title="Refresh State Telemetry">
+                <IconButton
+                  size="small"
+                  onClick={fetchAll}
+                  sx={{
+                    border: '1px solid #e2e8f0',
+                    borderRadius: 2,
+                    p: 0.65,
+                    color: '#64748b',
+                    background: '#ffffff',
+                    '&:hover': { background: '#f1f5f9', color: '#0f172a' }
+                  }}
+                >
+                  <Refresh sx={{ fontSize: 17 }} />
+                </IconButton>
+              </Tooltip>
+
+              <Divider orientation="vertical" flexItem sx={{ mx: 0.5, height: 22, alignSelf: 'center' }} />
+
+              {/* Expand / Collapse Toggle Button */}
+              <Button
+                size="small"
+                variant={isFilterExpanded ? 'text' : 'contained'}
+                onClick={() => setIsFilterExpanded(prev => !prev)}
+                endIcon={isFilterExpanded ? <KeyboardArrowUp sx={{ fontSize: 18 }} /> : <KeyboardArrowDown sx={{ fontSize: 18 }} />}
+                sx={{
+                  borderRadius: 2,
+                  fontSize: '0.75rem',
+                  fontWeight: 800,
+                  textTransform: 'none',
+                  py: 0.5,
+                  px: 1.5,
+                  ...(isFilterExpanded ? {
+                    color: '#475569',
+                    background: '#f1f5f9',
+                    '&:hover': { background: '#e2e8f0', color: '#0f172a' },
+                  } : {
+                    background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                    color: '#ffffff',
+                    boxShadow: '0 2px 8px rgba(2,132,199,0.25)',
+                    '&:hover': { background: 'linear-gradient(135deg, #0369a1 0%, #075985 100%)' },
+                  })
+                }}
+              >
+                {isFilterExpanded ? 'Close Filters' : 'Filter Scopes'}
               </Button>
             </Box>
           </Box>
 
-          {/* Filter Controls Grid */}
+          {/* ── Active Section Breadcrumb & Status Indicator ── */}
           <Box sx={{
-            display: 'grid',
-            gridTemplateColumns: {
-              xs: '1fr',
-              sm: 'repeat(2, 1fr)',
-              md: 'repeat(3, 1fr)',
-              lg: 'repeat(5, 1fr)',
-            },
-            gap: 1.5,
-            width: '100%',
+            borderTop: '1px solid #f1f5f9',
+            background: '#f8fafc',
+            px: { xs: 1.5, sm: 2.25 },
+            py: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 1,
           }}>
-            {/* 1. District Filter */}
-            <FormControl size="small" fullWidth>
-              <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: '#64748b', mb: 0.4 }}>
-                District Scope
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography sx={{ fontSize: '0.68rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Active Section:
               </Typography>
-              <Select
-                value={districtFilter}
-                onChange={(e) => setDistrictFilter(e.target.value)}
-                sx={{
-                  borderRadius: 2, fontSize: '0.8rem', fontWeight: 700,
-                  background: '#f8fafc',
-                  '& fieldset': { borderColor: districtFilter !== 'ALL' ? '#0284c7' : '#e2e8f0' }
-                }}
-              >
-                <MenuItem value="ALL" sx={{ fontSize: '0.8rem', fontWeight: 600 }}>🌐 All Chhattisgarh (State-Wide)</MenuItem>
-                {districts.map(d => (
-                  <MenuItem key={d.district_cd} value={d.district_name} sx={{ fontSize: '0.8rem' }}>
-                    #{d.rank} {d.district_name} ({d.avg_score_pct}%)
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-            {/* 2. Class / Grade Filter */}
-            <FormControl size="small" fullWidth>
-              <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: '#64748b', mb: 0.4 }}>
-                Class / Grade
-              </Typography>
-              <Select
-                value={classFilter}
-                onChange={(e) => setClassFilter(e.target.value)}
-                sx={{
-                  borderRadius: 2, fontSize: '0.8rem', fontWeight: 700,
-                  background: '#f8fafc',
-                  '& fieldset': { borderColor: classFilter !== 'ALL' ? '#0284c7' : '#e2e8f0' }
-                }}
-              >
-                <MenuItem value="ALL" sx={{ fontSize: '0.8rem', fontWeight: 600 }}>🎓 All Grades (Class 1-12)</MenuItem>
-                {['Class 3', 'Class 5', 'Class 8', 'Class 10', 'Class 12'].map(c => (
-                  <MenuItem key={c} value={c} sx={{ fontSize: '0.8rem' }}>{c}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-            {/* 3. Subject Filter */}
-            <FormControl size="small" fullWidth>
-              <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: '#64748b', mb: 0.4 }}>
-                Subject Module
-              </Typography>
-              <Select
-                value={subjectFilter}
-                onChange={(e) => setSubjectFilter(e.target.value)}
-                sx={{
-                  borderRadius: 2, fontSize: '0.8rem', fontWeight: 700,
-                  background: '#f8fafc',
-                  '& fieldset': { borderColor: subjectFilter !== 'ALL' ? '#0284c7' : '#e2e8f0' }
-                }}
-              >
-                <MenuItem value="ALL" sx={{ fontSize: '0.8rem', fontWeight: 600 }}>📚 All Subjects Combined</MenuItem>
-                {(overview?.subjects || []).map((s, idx) => (
-                  <MenuItem key={idx} value={s.subject_name} sx={{ fontSize: '0.8rem' }}>
-                    {s.subject_name} ({s.avg_score_pct}%)
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-            {/* 4. Performance Tier Filter */}
-            <FormControl size="small" fullWidth>
-              <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: '#64748b', mb: 0.4 }}>
-                Performance Tier
-              </Typography>
-              <Select
-                value={tierFilter}
-                onChange={(e) => setTierFilter(e.target.value)}
-                sx={{
-                  borderRadius: 2, fontSize: '0.8rem', fontWeight: 700,
-                  background: '#f8fafc',
-                  '& fieldset': { borderColor: tierFilter !== 'ALL' ? '#0284c7' : '#e2e8f0' }
-                }}
-              >
-                <MenuItem value="ALL" sx={{ fontSize: '0.8rem', fontWeight: 600 }}>⚡ All Performance Tiers</MenuItem>
-                <MenuItem value="Excellent" sx={{ fontSize: '0.8rem', color: '#059669', fontWeight: 700 }}>🟢 Excellent (≥75% Score)</MenuItem>
-                <MenuItem value="Good" sx={{ fontSize: '0.8rem', color: '#0284c7', fontWeight: 700 }}>🔵 Good (60–75% Score)</MenuItem>
-                <MenuItem value="Average" sx={{ fontSize: '0.8rem', color: '#d97706', fontWeight: 700 }}>🟡 Average (40–60% Score)</MenuItem>
-                <MenuItem value="Needs Attention" sx={{ fontSize: '0.8rem', color: '#dc2626', fontWeight: 700 }}>🔴 Needs Attention (&lt;40% Score)</MenuItem>
-              </Select>
-            </FormControl>
-
-            {/* 5. Keyword Search */}
-            <Box>
-              <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: '#64748b', mb: 0.4 }}>
-                Search Keyword
-              </Typography>
-              <TextField
+              <Chip
+                icon={tabs[activeTab]?.icon}
+                label={tabs[activeTab]?.label || 'State Overview'}
                 size="small"
-                fullWidth
-                placeholder="District, school, teacher…"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Search sx={{ color: '#94a3b8', fontSize: 18 }} />
-                    </InputAdornment>
-                  ),
-                  endAdornment: searchTerm && (
-                    <InputAdornment position="end">
-                      <IconButton size="small" onClick={() => setSearchTerm('')}>
-                        <Close sx={{ fontSize: 14 }} />
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                  sx: {
-                    borderRadius: 2,
-                    fontSize: '0.8rem',
-                    background: '#f8fafc',
-                    '& fieldset': { borderColor: searchTerm ? '#0284c7' : '#e2e8f0' }
-                  }
+                sx={{
+                  background: '#e0f2fe',
+                  color: '#0284c7',
+                  fontWeight: 800,
+                  fontSize: '0.74rem',
+                  height: 24,
+                  border: '1px solid #bae6fd',
+                  '& .MuiChip-icon': { color: '#0284c7' }
                 }}
               />
+              {tabs[activeTab]?.badge && (
+                <Chip
+                  label={tabs[activeTab].badge}
+                  size="small"
+                  sx={{
+                    background: '#ffffff',
+                    color: '#64748b',
+                    fontWeight: 700,
+                    fontSize: '0.64rem',
+                    height: 20,
+                    border: '1px solid #e2e8f0',
+                  }}
+                />
+              )}
             </Box>
+
+            <Typography sx={{ fontSize: '0.68rem', color: '#94a3b8', fontWeight: 500 }}>
+              Use the left sidebar to navigate across all dashboard modules
+            </Typography>
           </Box>
 
-          {/* Active Filter Summary Chips */}
-          {activeFiltersCount > 0 && (
+          {/* Mini active filter summary chips row when collapsed */}
+          {!isFilterExpanded && activeFiltersCount > 0 && (
             <Box sx={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              p: 1.25, borderRadius: 2, background: '#f0f9ff', border: '1px solid #bae6fd',
-              flexWrap: 'wrap', gap: 1,
+              display: 'flex', alignItems: 'center', gap: 1,
+              px: { xs: 1.5, sm: 2 }, py: 1,
+              borderTop: '1px solid #f1f5f9',
+              background: '#f8fafc',
+              flexWrap: 'wrap',
             }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                <Typography sx={{ color: '#0369a1', fontSize: '0.75rem', fontWeight: 800 }}>
-                  Active Focus Scope:
-                </Typography>
-                {districtFilter !== 'ALL' && (
-                  <Chip
-                    label={`District: ${districtFilter}`}
-                    size="small"
-                    onDelete={() => setDistrictFilter('ALL')}
-                    sx={{ background: '#ffffff', color: '#0284c7', border: '1px solid #bae6fd', fontSize: '0.68rem', fontWeight: 700 }}
-                  />
-                )}
-                {classFilter !== 'ALL' && (
-                  <Chip
-                    label={`Grade: ${classFilter}`}
-                    size="small"
-                    onDelete={() => setClassFilter('ALL')}
-                    sx={{ background: '#ffffff', color: '#0284c7', border: '1px solid #bae6fd', fontSize: '0.68rem', fontWeight: 700 }}
-                  />
-                )}
-                {subjectFilter !== 'ALL' && (
-                  <Chip
-                    label={`Subject: ${subjectFilter}`}
-                    size="small"
-                    onDelete={() => setSubjectFilter('ALL')}
-                    sx={{ background: '#ffffff', color: '#0284c7', border: '1px solid #bae6fd', fontSize: '0.68rem', fontWeight: 700 }}
-                  />
-                )}
-                {tierFilter !== 'ALL' && (
-                  <Chip
-                    label={`Tier: ${tierFilter}`}
-                    size="small"
-                    onDelete={() => setTierFilter('ALL')}
-                    sx={{ background: '#ffffff', color: '#0284c7', border: '1px solid #bae6fd', fontSize: '0.68rem', fontWeight: 700 }}
-                  />
-                )}
-                {searchTerm && (
-                  <Chip
-                    label={`Search: "${searchTerm}"`}
-                    size="small"
-                    onDelete={() => setSearchTerm('')}
-                    sx={{ background: '#ffffff', color: '#0284c7', border: '1px solid #bae6fd', fontSize: '0.68rem', fontWeight: 700 }}
-                  />
-                )}
-              </Box>
+              <Typography sx={{ color: '#0369a1', fontSize: '0.7rem', fontWeight: 800 }}>
+                Active Filters:
+              </Typography>
+              {districtFilter !== 'ALL' && (
+                <Chip label={`District: ${districtFilter}`} size="small" onDelete={() => setDistrictFilter('ALL')} sx={{ height: 22, fontSize: '0.65rem' }} />
+              )}
+              {classFilter !== 'ALL' && (
+                <Chip label={`Grade: ${classFilter}`} size="small" onDelete={() => setClassFilter('ALL')} sx={{ height: 22, fontSize: '0.65rem' }} />
+              )}
+              {subjectFilter !== 'ALL' && (
+                <Chip label={`Subject: ${subjectFilter}`} size="small" onDelete={() => setSubjectFilter('ALL')} sx={{ height: 22, fontSize: '0.65rem' }} />
+              )}
+              {tierFilter !== 'ALL' && (
+                <Chip label={`Tier: ${tierFilter}`} size="small" onDelete={() => setTierFilter('ALL')} sx={{ height: 22, fontSize: '0.65rem' }} />
+              )}
+              {searchTerm && (
+                <Chip label={`Search: "${searchTerm}"`} size="small" onDelete={() => setSearchTerm('')} sx={{ height: 22, fontSize: '0.65rem' }} />
+              )}
               <Button
                 size="small"
                 onClick={handleResetAllFilters}
-                sx={{ fontSize: '0.7rem', fontWeight: 800, color: '#0284c7', p: 0 }}
+                sx={{ fontSize: '0.68rem', fontWeight: 800, color: '#dc2626', p: 0, minWidth: 'auto', textTransform: 'none' }}
               >
                 Clear All
               </Button>
             </Box>
           )}
-        </Card>
-      </motion.div>
 
-      {/* ── Full-Width Responsive 2-2-2-2-2-2 KPI Grid ────────────────────── */}
-      <Box sx={{
-        display: 'grid',
-        gridTemplateColumns: {
-          xs: '1fr',
-          sm: 'repeat(2, 1fr)',
-          md: 'repeat(3, 1fr)',
-          lg: 'repeat(6, 1fr)',
-        },
-        gap: 2,
-        width: '100%',
-      }}>
-        {/* Card 1: Total Schools */}
-        <StateKpiCard
-          label={districtFilter !== 'ALL' ? `${districtFilter} Schools` : 'Total Schools'}
-          value={(filteredKpis.total_schools || 0).toLocaleString()}
-          sub={`${filteredKpis.total_blocks || 0} Blocks · ${filteredKpis.total_clusters || 0} Clusters`}
-          color="#0284c7"
-          gradientTo="#38bdf8"
-          icon={<School sx={{ fontSize: 22 }} />}
-          badge={districtFilter !== 'ALL' ? districtFilter : 'Infrastructure'}
-          delay={0}
-        />
-
-        {/* Card 2: Enrolled Students */}
-        <StateKpiCard
-          label={districtFilter !== 'ALL' ? `${districtFilter} Students` : 'Enrolled Students'}
-          value={(filteredKpis.total_students || 0).toLocaleString()}
-          sub={`♂ ${(filteredKpis.male_students || 0).toLocaleString()} · ♀ ${(filteredKpis.female_students || 0).toLocaleString()} (${filteredKpis.gender_ratio_girls_pct || 52}%)`}
-          color="#8b5cf6"
-          gradientTo="#a855f7"
-          icon={<People sx={{ fontSize: 22 }} />}
-          badge="Cohort"
-          delay={1}
-        />
-
-        {/* Card 3: Teaching Cadre */}
-        <StateKpiCard
-          label={districtFilter !== 'ALL' ? `${districtFilter} Teachers` : 'Teaching Cadre'}
-          value={(filteredKpis.total_teachers || 0).toLocaleString()}
-          sub={`${filteredKpis.assessment_compliance || 0}% Assessment Compliance`}
-          color="#f59e0b"
-          gradientTo="#fbbf24"
-          icon={<AssignmentTurnedIn sx={{ fontSize: 22 }} />}
-          badge="Faculty"
-          delay={2}
-        />
-
-        {/* Card 4: Average Academic Score */}
-        <StateKpiCard
-          label={districtFilter !== 'ALL' ? `${districtFilter} Avg Score` : 'State Avg Score'}
-          value={`${filteredKpis.state_avg_score || 0}%`}
-          sub={`Pass Rate: ${filteredKpis.pass_rate_pct || 0}% (≥40% marks)`}
-          color="#10b981"
-          gradientTo="#34d399"
-          icon={<TrendingUp sx={{ fontSize: 22 }} />}
-          badge={filteredKpis.state_avg_score >= 75 ? 'Excellent' : filteredKpis.state_avg_score >= 60 ? 'Good' : 'Average'}
-          delay={3}
-        />
-
-        {/* Card 5: High Achievers */}
-        <StateKpiCard
-          label="High Achievers"
-          value={(filteredKpis.high_achievers_count || 0).toLocaleString()}
-          sub={`${filteredKpis.total_students > 0 ? Math.round((filteredKpis.high_achievers_count / filteredKpis.total_students) * 100) : 0}% of cohort scoring ≥70%`}
-          color="#06b6d4"
-          gradientTo="#22d3ee"
-          icon={<EmojiEvents sx={{ fontSize: 22 }} />}
-          badge="≥70% Score"
-          delay={4}
-        />
-
-        {/* Card 6: Remedial & Critical */}
-        <StateKpiCard
-          label="Remedial Needs"
-          value={(filteredKpis.remedial_count || 0).toLocaleString()}
-          sub={`${filteredKpis.critical_schools_count || 0} critical schools require action`}
-          color="#ef4444"
-          gradientTo="#f87171"
-          icon={<Warning sx={{ fontSize: 22 }} />}
-          badge="<40% Score"
-          delay={5}
-        />
-      </Box>
-
-      {/* ── Clean Light Navigation Tabs Bar ─────────────────────────────────── */}
-      <motion.div {...stagger(1)}>
-        <Box
-          sx={{
-            background: '#ffffff',
-            borderRadius: 3,
-            border: '1px solid #e2e8f0',
-            boxShadow: '0 1px 4px rgba(15,23,42,0.04), 0 4px 16px rgba(15,23,42,0.03)',
-            overflow: 'hidden',
-          }}
-        >
-          <Tabs
-            value={activeTab}
-            onChange={(_, v) => setActiveTab(v)}
-            variant="scrollable"
-            scrollButtons="auto"
-            sx={{
-              px: 1,
-              '& .MuiTab-root': {
-                color: '#64748b',
-                fontWeight: 600,
-                fontSize: '0.8rem',
-                minHeight: 52,
-                py: 1.25,
-                px: 2,
-                textTransform: 'none',
-                transition: 'all 0.15s ease',
-                letterSpacing: '0.01em',
-                '&:hover': {
-                  color: '#0f3460',
-                  background: '#f8fafc',
+          {/* Collapsible Filter Body */}
+          <Collapse in={isFilterExpanded} timeout="auto" unmountOnExit={false}>
+            <Box sx={{ p: { xs: 1.5, sm: 2 }, borderTop: '1px solid #e2e8f0', background: '#f8fafc', display: 'flex', flexDirection: 'column', gap: 1.75 }}>
+              {/* Filter Controls Grid */}
+              <Box sx={{
+                display: 'grid',
+                gridTemplateColumns: {
+                  xs: '1fr',
+                  sm: 'repeat(2, 1fr)',
+                  md: 'repeat(3, 1fr)',
+                  lg: 'repeat(5, 1fr)',
                 },
-              },
-              '& .Mui-selected': {
-                color: '#0284c7 !important',
-                fontWeight: 800,
-              },
-              '& .MuiTabs-indicator': {
-                background: 'linear-gradient(90deg, #0f3460, #0284c7)',
-                height: 3,
-                borderRadius: '3px 3px 0 0',
-              },
-            }}
-          >
-            {tabs.map((t, i) => (
-              <Tab
-                key={i}
-                label={
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-                    <span>{t.label}</span>
-                    {t.badge && (
-                      <Box sx={{
-                        px: 0.75, py: 0.1, borderRadius: 1,
-                        background: activeTab === i ? '#e0f2fe' : '#f1f5f9',
-                        fontSize: '0.58rem',
-                        fontWeight: 800,
-                        color: activeTab === i ? '#0284c7' : '#94a3b8',
-                        letterSpacing: '0.04em',
-                        lineHeight: 1.5,
-                        textTransform: 'uppercase',
-                        border: activeTab === i ? '1px solid #bae6fd' : '1px solid #e2e8f0',
-                        flexShrink: 0,
-                      }}>
-                        {t.badge}
-                      </Box>
+                gap: 1.5,
+                width: '100%',
+              }}>
+                {/* 1. District Filter */}
+                <FormControl size="small" fullWidth>
+                  <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: '#64748b', mb: 0.4 }}>
+                    District Scope
+                  </Typography>
+                  <Select
+                    value={districtFilter}
+                    onChange={(e) => setDistrictFilter(e.target.value)}
+                    sx={{
+                      borderRadius: 2, fontSize: '0.8rem', fontWeight: 700,
+                      background: '#f8fafc',
+                      '& fieldset': { borderColor: districtFilter !== 'ALL' ? '#0284c7' : '#e2e8f0' }
+                    }}
+                  >
+                    <MenuItem value="ALL" sx={{ fontSize: '0.8rem', fontWeight: 600 }}>🌐 All Chhattisgarh (State-Wide)</MenuItem>
+                    {districts.map(d => (
+                      <MenuItem key={d.district_cd} value={d.district_name} sx={{ fontSize: '0.8rem' }}>
+                        #{d.rank} {d.district_name} ({d.avg_score_pct}%)
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                {/* 2. Class / Grade Filter */}
+                <FormControl size="small" fullWidth>
+                  <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: '#64748b', mb: 0.4 }}>
+                    Class / Grade
+                  </Typography>
+                  <Select
+                    value={classFilter}
+                    onChange={(e) => setClassFilter(e.target.value)}
+                    sx={{
+                      borderRadius: 2, fontSize: '0.8rem', fontWeight: 700,
+                      background: '#f8fafc',
+                      '& fieldset': { borderColor: classFilter !== 'ALL' ? '#0284c7' : '#e2e8f0' }
+                    }}
+                  >
+                    <MenuItem value="ALL" sx={{ fontSize: '0.8rem', fontWeight: 600 }}>🎓 All Grades (Class 1-12)</MenuItem>
+                    {['Class 3', 'Class 5', 'Class 8', 'Class 10', 'Class 12'].map(c => (
+                      <MenuItem key={c} value={c} sx={{ fontSize: '0.8rem' }}>{c}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                {/* 3. Subject Filter */}
+                <FormControl size="small" fullWidth>
+                  <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: '#64748b', mb: 0.4 }}>
+                    Subject Module
+                  </Typography>
+                  <Select
+                    value={subjectFilter}
+                    onChange={(e) => setSubjectFilter(e.target.value)}
+                    sx={{
+                      borderRadius: 2, fontSize: '0.8rem', fontWeight: 700,
+                      background: '#f8fafc',
+                      '& fieldset': { borderColor: subjectFilter !== 'ALL' ? '#0284c7' : '#e2e8f0' }
+                    }}
+                  >
+                    <MenuItem value="ALL" sx={{ fontSize: '0.8rem', fontWeight: 600 }}>📚 All Subjects Combined</MenuItem>
+                    {(overview?.subjects || []).map((s, idx) => (
+                      <MenuItem key={idx} value={s.subject_name} sx={{ fontSize: '0.8rem' }}>
+                        {s.subject_name} ({s.avg_score_pct}%)
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                {/* 4. Performance Tier Filter */}
+                <FormControl size="small" fullWidth>
+                  <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: '#64748b', mb: 0.4 }}>
+                    Performance Tier
+                  </Typography>
+                  <Select
+                    value={tierFilter}
+                    onChange={(e) => setTierFilter(e.target.value)}
+                    sx={{
+                      borderRadius: 2, fontSize: '0.8rem', fontWeight: 700,
+                      background: '#f8fafc',
+                      '& fieldset': { borderColor: tierFilter !== 'ALL' ? '#0284c7' : '#e2e8f0' }
+                    }}
+                  >
+                    <MenuItem value="ALL" sx={{ fontSize: '0.8rem', fontWeight: 600 }}>⚡ All Performance Tiers</MenuItem>
+                    <MenuItem value="Excellent" sx={{ fontSize: '0.8rem', color: '#059669', fontWeight: 700 }}>🟢 Excellent (≥75% Score)</MenuItem>
+                    <MenuItem value="Good" sx={{ fontSize: '0.8rem', color: '#0284c7', fontWeight: 700 }}>🔵 Good (60–75% Score)</MenuItem>
+                    <MenuItem value="Average" sx={{ fontSize: '0.8rem', color: '#d97706', fontWeight: 700 }}>🟡 Average (40–60% Score)</MenuItem>
+                    <MenuItem value="Needs Attention" sx={{ fontSize: '0.8rem', color: '#dc2626', fontWeight: 700 }}>🔴 Needs Attention (&lt;40% Score)</MenuItem>
+                  </Select>
+                </FormControl>
+
+                {/* 5. Keyword Search */}
+                <Box>
+                  <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: '#64748b', mb: 0.4 }}>
+                    Search Keyword
+                  </Typography>
+                  <TextField
+                    size="small"
+                    fullWidth
+                    placeholder="District, school, teacher…"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <Search sx={{ color: '#94a3b8', fontSize: 18 }} />
+                        </InputAdornment>
+                      ),
+                      endAdornment: searchTerm && (
+                        <InputAdornment position="end">
+                          <IconButton size="small" onClick={() => setSearchTerm('')}>
+                            <Close sx={{ fontSize: 14 }} />
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                      sx: {
+                        borderRadius: 2,
+                        fontSize: '0.8rem',
+                        background: '#f8fafc',
+                        '& fieldset': { borderColor: searchTerm ? '#0284c7' : '#e2e8f0' }
+                      }
+                    }}
+                  />
+                </Box>
+              </Box>
+
+              {/* Active Filter Summary Chips */}
+              {activeFiltersCount > 0 && (
+                <Box sx={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  p: 1.25, borderRadius: 2, background: '#f0f9ff', border: '1px solid #bae6fd',
+                  flexWrap: 'wrap', gap: 1,
+                }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                    <Typography sx={{ color: '#0369a1', fontSize: '0.75rem', fontWeight: 800 }}>
+                      Active Focus Scope:
+                    </Typography>
+                    {districtFilter !== 'ALL' && (
+                      <Chip
+                        label={`District: ${districtFilter}`}
+                        size="small"
+                        onDelete={() => setDistrictFilter('ALL')}
+                        sx={{ background: '#ffffff', color: '#0284c7', border: '1px solid #bae6fd', fontSize: '0.68rem', fontWeight: 700 }}
+                      />
+                    )}
+                    {classFilter !== 'ALL' && (
+                      <Chip
+                        label={`Grade: ${classFilter}`}
+                        size="small"
+                        onDelete={() => setClassFilter('ALL')}
+                        sx={{ background: '#ffffff', color: '#0284c7', border: '1px solid #bae6fd', fontSize: '0.68rem', fontWeight: 700 }}
+                      />
+                    )}
+                    {subjectFilter !== 'ALL' && (
+                      <Chip
+                        label={`Subject: ${subjectFilter}`}
+                        size="small"
+                        onDelete={() => setSubjectFilter('ALL')}
+                        sx={{ background: '#ffffff', color: '#0284c7', border: '1px solid #bae6fd', fontSize: '0.68rem', fontWeight: 700 }}
+                      />
+                    )}
+                    {tierFilter !== 'ALL' && (
+                      <Chip
+                        label={`Tier: ${tierFilter}`}
+                        size="small"
+                        onDelete={() => setTierFilter('ALL')}
+                        sx={{ background: '#ffffff', color: '#0284c7', border: '1px solid #bae6fd', fontSize: '0.68rem', fontWeight: 700 }}
+                      />
+                    )}
+                    {searchTerm && (
+                      <Chip
+                        label={`Search: "${searchTerm}"`}
+                        size="small"
+                        onDelete={() => setSearchTerm('')}
+                        sx={{ background: '#ffffff', color: '#0284c7', border: '1px solid #bae6fd', fontSize: '0.68rem', fontWeight: 700 }}
+                      />
                     )}
                   </Box>
-                }
-                icon={<Box sx={{ color: activeTab === i ? '#0284c7' : '#94a3b8', display: 'flex' }}>{t.icon}</Box>}
-                iconPosition="start"
-                disableRipple
-              />
-            ))}
-          </Tabs>
-        </Box>
+                  <Button
+                    size="small"
+                    onClick={handleResetAllFilters}
+                    sx={{ fontSize: '0.7rem', fontWeight: 800, color: '#0284c7', p: 0 }}
+                  >
+                    Clear All
+                  </Button>
+                </Box>
+              )}
+            </Box>
+          </Collapse>
+        </Card>
       </motion.div>
 
       {/* ════════════════════════════════════════════════════════════════════ */}
@@ -2474,6 +2529,119 @@ export default function StateDashboard() {
       <AnimatePresence mode="wait">
         {activeTab === 0 && (
           <motion.div key="tab0" {...fadeUp} style={{ display: 'flex', flexDirection: 'column', gap: 24, width: '100%' }}>
+
+            {/* ── Full-Width Responsive KPI Grid (Section-Wise: Only in State Overview) ── */}
+            <Box
+              component={motion.div}
+              variants={kpiGridVariants}
+              initial="hidden"
+              animate="show"
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: {
+                  xs: '1fr',
+                  sm: 'repeat(2, minmax(0, 1fr))',
+                  md: 'repeat(3, minmax(0, 1fr))',
+                  xl: 'repeat(6, minmax(0, 1fr))',
+                },
+                gap: { xs: 1.5, sm: 2 },
+                width: '100%',
+                maxWidth: '100%',
+                minWidth: 0,
+                boxSizing: 'border-box',
+                overflow: 'hidden',
+              }}
+            >
+              {/* Card 1: Total Schools */}
+              <StateKpiCard
+                label={districtFilter !== 'ALL' ? `${districtFilter} Schools` : 'Total Schools'}
+                value={(filteredKpis.total_schools || 0).toLocaleString('en-IN')}
+                sub={`${filteredKpis.total_blocks || 0} Blocks · ${filteredKpis.total_clusters || 0} Clusters`}
+                color="#0284c7"
+                gradientTo="#38bdf8"
+                waveColor="blue"
+                waveTop="25%"
+                icon={<School sx={{ fontSize: 22 }} />}
+                badge={districtFilter !== 'ALL' ? districtFilter : 'Infrastructure'}
+                delay={0}
+                onClick={() => setActiveTab(6)}
+              />
+
+              {/* Card 2: Enrolled Students */}
+              <StateKpiCard
+                label={districtFilter !== 'ALL' ? `${districtFilter} Students` : 'Enrolled Students'}
+                value={(filteredKpis.total_students || 0).toLocaleString('en-IN')}
+                sub={`♂ ${(filteredKpis.male_students || 0).toLocaleString('en-IN')} · ♀ ${(filteredKpis.female_students || 0).toLocaleString('en-IN')} (${filteredKpis.gender_ratio_girls_pct || 52}%)`}
+                color="#8b5cf6"
+                gradientTo="#a855f7"
+                waveColor="purple"
+                waveTop="20%"
+                icon={<People sx={{ fontSize: 22 }} />}
+                badge="Cohort"
+                delay={1}
+                onClick={() => setActiveTab(5)}
+              />
+
+              {/* Card 3: Teaching Cadre */}
+              <StateKpiCard
+                label={districtFilter !== 'ALL' ? `${districtFilter} Teachers` : 'Teaching Cadre'}
+                value={(filteredKpis.total_teachers || 0).toLocaleString('en-IN')}
+                sub={`${filteredKpis.assessment_compliance || 0}% Assessment Compliance`}
+                color="#f59e0b"
+                gradientTo="#fbbf24"
+                waveColor="amber"
+                waveTop="30%"
+                icon={<AssignmentTurnedIn sx={{ fontSize: 22 }} />}
+                badge="Faculty"
+                delay={2}
+                onClick={() => setActiveTab(10)}
+              />
+
+              {/* Card 4: Average Academic Score */}
+              <StateKpiCard
+                label={districtFilter !== 'ALL' ? `${districtFilter} Avg Score` : 'State Avg Score'}
+                value={`${filteredKpis.state_avg_score || 0}%`}
+                sub={`Pass Rate: ${filteredKpis.pass_rate_pct || 0}% (≥40% marks)`}
+                color="#10b981"
+                gradientTo="#34d399"
+                waveColor="green"
+                waveTop={`calc(100% - ${Math.min(100, Math.max(15, filteredKpis.state_avg_score || 64))}%)`}
+                icon={<TrendingUp sx={{ fontSize: 22 }} />}
+                badge={filteredKpis.state_avg_score >= 75 ? 'Excellent' : filteredKpis.state_avg_score >= 60 ? 'Good' : 'Average'}
+                delay={3}
+                onClick={() => setActiveTab(0)}
+              />
+
+              {/* Card 5: High Achievers */}
+              <StateKpiCard
+                label="High Achievers"
+                value={(filteredKpis.high_achievers_count || 0).toLocaleString('en-IN')}
+                sub={`${filteredKpis.total_students > 0 ? Math.round((filteredKpis.high_achievers_count / filteredKpis.total_students) * 100) : 0}% of cohort scoring ≥70%`}
+                color="#06b6d4"
+                gradientTo="#22d3ee"
+                waveColor="cyan"
+                waveTop="45%"
+                icon={<EmojiEvents sx={{ fontSize: 22 }} />}
+                badge="≥70% Score"
+                delay={4}
+                onClick={() => { setActiveTab(0); setTierFilter('Excellent'); }}
+              />
+
+              {/* Card 6: Remedial & Critical */}
+              <StateKpiCard
+                label="Remedial Needs"
+                value={(filteredKpis.remedial_count || 0).toLocaleString('en-IN')}
+                sub={`${filteredKpis.critical_schools_count || 0} critical schools require action`}
+                color="#ef4444"
+                gradientTo="#f87171"
+                waveColor="rose"
+                waveTop="70%"
+                icon={<Warning sx={{ fontSize: 22 }} />}
+                badge="<40% Score"
+                delay={5}
+                onClick={() => { setActiveTab(0); setTierFilter('Needs Attention'); }}
+              />
+            </Box>
 
             {/* ── State GIS 2D Vector Heatmap (Tier 1 Core Monitoring) ── */}
             <StateHeatmapMap
@@ -2565,14 +2733,19 @@ export default function StateDashboard() {
                     </Button>
                   }
                 />
-                <Box sx={{ height: 290 }}>
+                <Box sx={{ height: 325 }}>
                   <ResponsiveContainer width="100%" height="100%">
-                    <ReBarChart data={filteredDistPerf} margin={{ top: 10, right: 15, left: -20, bottom: 25 }}>
+                    <ReBarChart data={filteredDistPerf} margin={{ top: 10, right: 15, left: -20, bottom: 45 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                       <XAxis
                         dataKey="district_name"
-                        tick={{ fill: '#475569', fontSize: 11, fontWeight: 600 }}
+                        tick={{ fill: '#475569', fontSize: 10, fontWeight: 600 }}
+                        angle={-45}
+                        textAnchor="end"
                         interval={0}
+                        height={65}
+                        dx={-4}
+                        dy={4}
                       />
                       <YAxis tick={{ fill: '#64748b', fontSize: 11 }} domain={[0, 100]} />
                       <RTooltip content={<CustomLightTooltip />} />
@@ -2674,121 +2847,6 @@ export default function StateDashboard() {
               )}
             </Box>
 
-            {/* Row 3: State Strategic Action Directives (AI Action Hub) */}
-            <LightCard delay={5}>
-              <LightSectionHeader
-                icon={<FlagOutlined sx={{ fontSize: 20 }} />}
-                title="State Policy & Strategic Action Directives"
-                subtitle="Data-driven administrative policy directives for the State Education Department"
-              />
-              <Box sx={{
-                display: 'grid',
-                gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' },
-                gap: 2,
-                width: '100%',
-              }}>
-                {filteredDirectives.map((d, i) => {
-                  const priorityStyles = {
-                    CRITICAL: {
-                      bg: '#fef2f2', border: '#fecaca', badge: '#dc2626',
-                      icon: <ErrorIcon sx={{ fontSize: 20, color: '#dc2626' }} />,
-                      textColor: '#991b1b'
-                    },
-                    HIGH: {
-                      bg: '#fffbeb', border: '#fde68a', badge: '#d97706',
-                      icon: <Warning sx={{ fontSize: 20, color: '#d97706' }} />,
-                      textColor: '#92400e'
-                    },
-                    MEDIUM: {
-                      bg: '#f0f9ff', border: '#bae6fd', badge: '#0284c7',
-                      icon: <Insights sx={{ fontSize: 20, color: '#0284c7' }} />,
-                      textColor: '#075985'
-                    },
-                    POSITIVE: {
-                      bg: '#ecfdf5', border: '#a7f3d0', badge: '#059669',
-                      icon: <CheckCircle sx={{ fontSize: 20, color: '#059669' }} />,
-                      textColor: '#065f46'
-                    },
-                  };
-                  const style = priorityStyles[d.priority] || priorityStyles.MEDIUM;
-
-                  return (
-                    <Box key={i} sx={{
-                      p: 2.2,
-                      borderRadius: 2.5,
-                      height: '100%',
-                      background: style.bg,
-                      border: `1px solid ${style.border}`,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'space-between',
-                      transition: 'all 0.2s ease',
-                      '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 6px 18px rgba(0,0,0,0.06)' },
-                    }}>
-                      <Box>
-                        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5, mb: 1 }}>
-                          {style.icon}
-                          <Box sx={{ flex: 1 }}>
-                            <Typography sx={{ fontWeight: 800, color: style.textColor, fontSize: '0.88rem', lineHeight: 1.3 }}>
-                              {d.title}
-                            </Typography>
-                            <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap', mt: 0.75, mb: 1 }}>
-                              <Chip
-                                label={d.badge}
-                                size="small"
-                                sx={{
-                                  height: 20, fontSize: '0.62rem', fontWeight: 800,
-                                  background: style.badge, color: '#ffffff', borderRadius: 1.5,
-                                }}
-                              />
-                              <Chip
-                                label={`Scope: ${d.scope}`}
-                                size="small"
-                                sx={{
-                                  height: 20, fontSize: '0.62rem', fontWeight: 600,
-                                  background: '#ffffff', color: '#475569', border: '1px solid #e2e8f0', borderRadius: 1.5,
-                                }}
-                              />
-                              {d.impact && (
-                                <Chip
-                                  label={`Impact: ${d.impact}`}
-                                  size="small"
-                                  sx={{
-                                    height: 20, fontSize: '0.62rem', fontWeight: 600,
-                                    background: '#ffffff', color: '#64748b', border: '1px solid #e2e8f0', borderRadius: 1.5,
-                                  }}
-                                />
-                              )}
-                            </Box>
-                          </Box>
-                        </Box>
-                        <Typography sx={{ color: '#475569', fontSize: '0.78rem', lineHeight: 1.55, mb: 2 }}>
-                          {d.detail}
-                        </Typography>
-                      </Box>
-
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        endIcon={<KeyboardArrowRight sx={{ fontSize: 16 }} />}
-                        sx={{
-                          color: style.badge,
-                          borderColor: style.badge,
-                          fontSize: '0.72rem',
-                          fontWeight: 700,
-                          borderRadius: 1.8,
-                          py: 0.5,
-                          alignSelf: 'flex-start',
-                          '&:hover': { background: alpha(style.badge, 0.08), borderColor: style.badge },
-                        }}
-                      >
-                        {d.action}
-                      </Button>
-                    </Box>
-                  );
-                })}
-              </Box>
-            </LightCard>
 
             {/* Row 4: Top Performing Schools vs Critical Focus Schools */}
             <Box sx={{
@@ -2886,6 +2944,15 @@ export default function StateDashboard() {
               </LightCard>
             </Box>
 
+            {/* ── Row 5: 🏆 District Rankings (Placed at Bottom of Page) ── */}
+            <motion.div {...fadeUp} style={{ width: '100%' }}>
+              <DistrictRankingsCard
+                districtData={filteredDistricts || districts}
+                selectedDistrict={districtFilter}
+                onSelectDistrict={(dist) => setDistrictFilter(dist)}
+              />
+            </motion.div>
+
           </motion.div>
         )}
 
@@ -2893,12 +2960,19 @@ export default function StateDashboard() {
         {/* TAB 1: Dedicated State GIS Heatmap */}
         {/* ════════════════════════════════════════════════════════════════════ */}
         {activeTab === 1 && (
-          <motion.div key="tab1-gis" {...fadeUp} style={{ width: '100%' }}>
+          <motion.div key="tab1-gis" {...fadeUp} style={{ display: 'flex', flexDirection: 'column', gap: 24, width: '100%' }}>
             <StateHeatmapMap
               districtData={filteredDistricts || districts}
               selectedDistrict={districtFilter}
               onSelectDistrict={(dist) => setDistrictFilter(dist)}
               loading={loading}
+            />
+
+            {/* 🏆 District Rankings also available at bottom of Dedicated GIS Heatmap */}
+            <DistrictRankingsCard
+              districtData={filteredDistricts || districts}
+              selectedDistrict={districtFilter}
+              onSelectDistrict={(dist) => setDistrictFilter(dist)}
             />
           </motion.div>
         )}

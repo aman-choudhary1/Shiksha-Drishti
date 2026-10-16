@@ -50,16 +50,19 @@ async function getClassStudents(req, res) {
     return res.status(400).json({ error: 'school_udise and academic_year_id could not be resolved' });
   }
 
-  // Teacher authorization: check assignment
+  // Teacher authorization: allow if in their primary school or explicitly assigned
   if (user.role === 'TEACHER') {
-    const assignRes = await pool.query(
-      `SELECT 1 FROM sd_teacher_assignments
-       WHERE user_id = $1 AND school_udise = $2 AND class_id = $3
-         AND is_active = true`,
-      [user.id, school_udise, classId]
-    );
-    if (!assignRes.rowCount) {
-      return res.status(403).json({ error: 'You are not authorized to access this class' });
+    const isSameSchool = String(user.primary_udise || '') === String(school_udise || '');
+    if (!isSameSchool) {
+      const assignRes = await pool.query(
+        `SELECT 1 FROM sd_teacher_assignments
+         WHERE user_id = $1 AND school_udise = $2 AND class_id = $3
+           AND is_active = true`,
+        [user.id, school_udise, classId]
+      );
+      if (!assignRes.rowCount) {
+        return res.status(403).json({ error: 'You are not authorized to access this class' });
+      }
     }
   }
 

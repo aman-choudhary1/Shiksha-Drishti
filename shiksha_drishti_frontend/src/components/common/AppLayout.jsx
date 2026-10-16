@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   Box, AppBar, Toolbar, Typography, IconButton, Avatar,
   Drawer, List, ListItem, ListItemIcon, ListItemText, ListItemButton,
   Tooltip, Divider, Badge, useMediaQuery, useTheme, Chip, Button,
-  Menu, MenuItem,
+  Menu, MenuItem, alpha
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -13,21 +13,41 @@ import {
   NotificationsNone, Add, AutoAwesome,
   HelpOutlineOutlined, KeyboardArrowDown,
   Insights, Layers, FiberManualRecord,
+  MapOutlined, TrendingUp, EmojiEvents,
+  CompareArrows, Groups, Download
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 
-const DRAWER_WIDTH_OPEN   = 268;
+const DRAWER_WIDTH_OPEN   = 276;
 const DRAWER_WIDTH_CLOSED = 68;
 
-const teacherNavItems = [
-  { label: 'Dashboard',          icon: <Dashboard />,          path: '/dashboard',          color: '#0284c7' },
-  { label: 'Academic Analytics', icon: <Insights />,           path: '/academic-analytics', color: '#6366f1', badge: 'UDISE' },
-  { label: 'Question Bank',      icon: <Layers />,             path: '/question-bank',      color: '#8b5cf6', badge: 'Admin' },
-  { label: 'Assessments',        icon: <AssignmentTurnedIn />, path: '/assessments',        color: '#10b981' },
-  { label: 'Students',           icon: <People />,             path: '/students',           color: '#f59e0b' },
-  { label: 'Analytics & LO',     icon: <AutoAwesome />,        path: '/analytics',          color: '#ec4899', badge: 'New' },
-  { label: 'School Profile',     icon: <School />,             path: '/schools',            color: '#ef4444' },
+const teacherNavSections = [
+  {
+    title: 'Classroom Command',
+    items: [
+      { label: 'Class Overview',      icon: <Dashboard />,          path: '/dashboard',          tabIndex: 0, color: '#0284c7', badge: 'Live' },
+      { label: 'Assigned Classes',    icon: <Layers />,             path: '/dashboard?tab=1',    tabIndex: 1, color: '#6366f1', badge: 'Matrix' },
+      { label: 'Exam & Marks Hub',    icon: <AssignmentTurnedIn />, path: '/dashboard?tab=2',    tabIndex: 2, color: '#10b981', badge: 'Assess' },
+    ]
+  },
+  {
+    title: 'Academic & Students',
+    items: [
+      { label: 'Student Directory',   icon: <People />,             path: '/students',           color: '#f59e0b', badge: 'Roster' },
+      { label: 'Class Diagnostics',   icon: <BarChart />,           path: '/dashboard?tab=3',    tabIndex: 3, color: '#06b6d4', badge: 'Analytics' },
+      { label: 'LO & Question Marks', icon: <AutoAwesome />,        path: '/analytics',          color: '#ec4899', badge: 'LO' },
+      { label: 'Academic Analytics',  icon: <Insights />,           path: '/academic-analytics', color: '#8b5cf6', badge: 'UDISE' },
+    ]
+  },
+  {
+    title: 'Curriculum & Resources',
+    items: [
+      { label: 'Question Bank',       icon: <School />,             path: '/question-bank',      color: '#0284c7', badge: 'Admin' },
+      { label: 'SCERT Digital DIKSHA',icon: <TrendingUp />,         path: '/dashboard?tab=4',    tabIndex: 4, color: '#f97316', badge: 'Remedial' },
+      { label: 'School Profile',      icon: <School />,             path: '/schools',            color: '#ef4444' },
+    ]
+  }
 ];
 
 const principalNavItems = [
@@ -70,14 +90,42 @@ const districtNavItems = [
   { label: 'Faculty Matrix',       icon: <People />,             path: '/dashboard?tab=4',    tabIndex: 4, color: '#ec4899' },
 ];
 
-const stateNavItems = [
-  { label: 'State Overview',       icon: <Dashboard />,          path: '/dashboard',          tabIndex: 0, color: '#0284c7' },
-  { label: 'Academic Analytics',   icon: <Insights />,           path: '/academic-analytics', color: '#6366f1', badge: 'UDISE' },
-  { label: 'Question Bank',        icon: <Layers />,             path: '/question-bank',      color: '#8b5cf6', badge: 'Admin' },
-  { label: 'District League',      icon: <BarChart />,           path: '/dashboard?tab=1',    tabIndex: 1, color: '#10b981' },
-  { label: 'Subject Diagnostics',  icon: <AutoAwesome />,        path: '/dashboard?tab=2',    tabIndex: 2, color: '#f59e0b', badge: 'AI' },
-  { label: 'Question Analytics',   icon: <AssignmentTurnedIn />, path: '/dashboard?tab=3',    tabIndex: 3, color: '#06b6d4', badge: 'HOT' },
-  { label: 'Teacher Matrix',       icon: <People />,             path: '/dashboard?tab=4',    tabIndex: 4, color: '#ec4899' },
+// ── State Level Nav Structure (Grouped into Executive Sections) ─────────────────
+const stateNavSections = [
+  {
+    title: 'Command & GIS',
+    items: [
+      { label: 'State Overview',         icon: <Dashboard />,          path: '/dashboard',          tabIndex: 0, color: '#0284c7' },
+      { label: 'State GIS Heatmap',      icon: <MapOutlined />,        path: '/dashboard?tab=1',    tabIndex: 1, color: '#059669', badge: 'GIS' },
+      { label: 'Academic Analytics',     icon: <Insights />,           path: '/academic-analytics', color: '#6366f1', badge: 'UDISE+' },
+    ]
+  },
+  {
+    title: 'Academic Intelligence',
+    items: [
+      { label: 'Subject Trends',         icon: <TrendingUp />,         path: '/dashboard?tab=2',    tabIndex: 2, color: '#8b5cf6', badge: 'Growth' },
+      { label: 'Promotion Readiness',    icon: <EmojiEvents />,        path: '/dashboard?tab=3',    tabIndex: 3, color: '#f59e0b', badge: 'Retention' },
+      { label: 'Student Performance',    icon: <People />,             path: '/dashboard?tab=5',    tabIndex: 5, color: '#06b6d4', badge: 'Cohort' },
+      { label: 'Subject Diagnostics',    icon: <BarChart />,           path: '/dashboard?tab=8',    tabIndex: 8, color: '#ec4899' },
+      { label: 'Question Analytics',     icon: <AutoAwesome />,        path: '/dashboard?tab=9',    tabIndex: 9, color: '#f97316', badge: 'LO' },
+    ]
+  },
+  {
+    title: 'District Governance & Cadre',
+    items: [
+      { label: 'District League Table',  icon: <Layers />,             path: '/dashboard?tab=6',    tabIndex: 6, color: '#10b981', badge: 'Rankings' },
+      { label: 'District Benchmarking',  icon: <CompareArrows />,      path: '/dashboard?tab=7',    tabIndex: 7, color: '#14b8a6', badge: 'Radar' },
+      { label: 'Submission Tracker',     icon: <AssignmentTurnedIn />, path: '/dashboard?tab=4',    tabIndex: 4, color: '#3b82f6', badge: 'Compliance' },
+      { label: 'Teacher Matrix',         icon: <Groups />,             path: '/dashboard?tab=10',   tabIndex: 10, color: '#a855f7' },
+    ]
+  },
+  {
+    title: 'Curriculum & Reports',
+    items: [
+      { label: 'Question Bank Authoring',icon: <School />,             path: '/question-bank',      color: '#6366f1', badge: 'Admin' },
+      { label: 'Report Download Center', icon: <Download />,           path: '/dashboard?tab=11',   tabIndex: 11, color: '#059669', badge: 'Excel' },
+    ]
+  }
 ];
 
 export default function AppLayout() {
@@ -95,7 +143,37 @@ export default function AppLayout() {
   const isCac      = user?.role === 'CAC' || user?.role === 'CLUSTER_COORDINATOR';
   const isPrincipal = user?.role === 'SCHOOL_ADMIN';
   const canCreateAssessment = user?.role === 'TEACHER' || user?.role === 'SCHOOL_ADMIN';
-  const navItems   = isState ? stateNavItems : isDistrict ? districtNavItems : isBlock ? blockNavItems : isCac ? cacNavItems : isPrincipal ? principalNavItems : teacherNavItems;
+
+  // Grouped Navigation Sections for rendering
+  const navSections = useMemo(() => {
+    if (isState) return stateNavSections;
+    if (isDistrict) {
+      return [
+        { title: 'District Overview', items: districtNavItems.slice(0, 3) },
+        { title: 'Analytics & Benchmarks', items: districtNavItems.slice(3) }
+      ];
+    }
+    if (isBlock) {
+      return [
+        { title: 'Block Overview', items: blockNavItems.slice(0, 3) },
+        { title: 'Cluster Monitoring', items: blockNavItems.slice(3) }
+      ];
+    }
+    if (isCac) {
+      return [
+        { title: 'Cluster Overview', items: cacNavItems.slice(0, 3) },
+        { title: 'School Operations', items: cacNavItems.slice(3) }
+      ];
+    }
+    if (isPrincipal) {
+      return [
+        { title: 'School Core', items: principalNavItems.slice(0, 4) },
+        { title: 'Academics & Profiles', items: principalNavItems.slice(4) }
+      ];
+    }
+    return teacherNavSections;
+  }, [isState, isDistrict, isBlock, isCac, isPrincipal]);
+
   const drawerWidth = isMobile ? DRAWER_WIDTH_OPEN : (drawerOpen ? DRAWER_WIDTH_OPEN : DRAWER_WIDTH_CLOSED);
 
   const handleLogout = async () => {
@@ -106,6 +184,7 @@ export default function AppLayout() {
 
   const getPageTitle = () => {
     const p = location.pathname;
+    const s = location.search;
     if (p.includes('/academic-analytics') || p.includes('/academic')) return 'Overall Academic Analytics (UDISE+ 5.75M Active Students)';
     if (p.includes('/question-bank'))  return 'Assessment Question Bank & Paper Authoring';
     if (p.includes('/report-card'))    return 'Class Report Card';
@@ -115,11 +194,31 @@ export default function AppLayout() {
     if (p.includes('/students'))       return 'Student Directory';
     if (p.includes('/analytics'))      return 'Analytics & LO';
     if (p.includes('/schools'))        return 'School Profile';
-    if (isState)    return 'Chhattisgarh Education Intelligence Command Centre';
+    if (isState) {
+      if (s.includes('tab=1')) return 'Chhattisgarh State GIS Cartography & Heatmap';
+      if (s.includes('tab=2')) return 'Subject Trend & Learning Growth Diagnostics';
+      if (s.includes('tab=3')) return 'Class Promotion & Retention Readiness';
+      if (s.includes('tab=4')) return 'Teacher Assessment Submission & Compliance Tracker';
+      if (s.includes('tab=5')) return 'Student Performance & Cohort Analytics';
+      if (s.includes('tab=6')) return 'District Performance League & Rankings';
+      if (s.includes('tab=7')) return 'District Academic Score Benchmarking';
+      if (s.includes('tab=8')) return 'State Subject Diagnostic Analysis';
+      if (s.includes('tab=9')) return 'Question & Learning Outcome (LO) Analytics';
+      if (s.includes('tab=10')) return 'Teacher Cadre & Faculty Matrix';
+      if (s.includes('tab=11')) return 'State Reports & Data Download Center';
+      return 'Chhattisgarh Education Intelligence Command Centre';
+    }
     if (isDistrict) return 'District Education Command Center (DEO)';
     if (isBlock)    return 'Block Education Command Center (BEO)';
     if (isCac)      return 'Cluster Command Center (CAC)';
-    return isPrincipal ? 'Principal Dashboard' : 'Teacher Dashboard';
+    if (isPrincipal) return 'Principal Dashboard';
+
+    // Class Teacher Tab Titles
+    if (s.includes('tab=1')) return 'Assigned Classes & Academic Matrix';
+    if (s.includes('tab=2')) return 'Examination Hub & Marks Submission Register';
+    if (s.includes('tab=3')) return 'Class Diagnostics & Subject Analytics';
+    if (s.includes('tab=4')) return 'SCERT Digital Remedial & DIKSHA Learning Center';
+    return 'Teacher Academic Command Center · Class Overview';
   };
 
   const getRoleLabel = () => {
@@ -151,6 +250,28 @@ export default function AppLayout() {
 
   const accent = getRoleAccent();
 
+  // Active check helper for exact and tab-based paths
+  const isItemActive = (item) => {
+    const currentPath = location.pathname;
+    const currentSearch = location.search;
+
+    if (item.path.includes('?')) {
+      const [itemBase, itemQuery] = item.path.split('?');
+      if (currentPath !== itemBase) return false;
+      const itemParams = new URLSearchParams(itemQuery);
+      const currentParams = new URLSearchParams(currentSearch);
+      const itemTab = itemParams.get('tab');
+      const currentTab = currentParams.get('tab') || '0';
+      return itemTab === currentTab;
+    }
+
+    if (item.path === '/dashboard') {
+      return currentPath === '/dashboard' && (!currentSearch || currentSearch === '?tab=0');
+    }
+
+    return currentPath === item.path || currentPath.startsWith(item.path + '/');
+  };
+
   // ── Sidebar Content ──────────────────────────────────────────────────────────
   const sidebarContent = (
     <Box sx={{
@@ -169,37 +290,37 @@ export default function AppLayout() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: drawerOpen ? 'space-between' : 'center',
-        background: `linear-gradient(135deg, ${accent}15 0%, ${accent}08 100%)`,
-        borderBottom: `2px solid ${accent}22`,
+        background: `linear-gradient(135deg, ${accent}15 0%, ${accent}06 100%)`,
+        borderBottom: `1px solid ${accent}22`,
         flexShrink: 0,
       }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, overflow: 'hidden' }}>
           <Box sx={{
             width: 36, height: 36,
-            borderRadius: 2.5,
+            borderRadius: 1.5,
             background: `linear-gradient(135deg, ${accent}, ${accent}cc)`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             flexShrink: 0,
             boxShadow: `0 4px 12px ${accent}40`,
           }}>
-            <School sx={{ color: '#ffffff', fontSize: 19 }} />
+            <School sx={{ color: '#ffffff', fontSize: 20 }} />
           </Box>
           {drawerOpen && (
             <Box sx={{ overflow: 'hidden', whiteSpace: 'nowrap' }}>
               <Typography sx={{
-                color: '#0f172a', fontWeight: 800,
-                fontSize: '0.98rem', lineHeight: 1.1,
+                color: '#0f172a', fontWeight: 900,
+                fontSize: '0.98rem', lineHeight: 1.15,
                 fontFamily: '"Plus Jakarta Sans", sans-serif',
-                letterSpacing: '-0.01em',
+                letterSpacing: '-0.02em',
               }}>
-                Shiksha Drishti
+                शिक्षा दृष्टि
               </Typography>
               <Typography sx={{
                 color: accent,
-                fontWeight: 700, fontSize: '0.6rem',
-                letterSpacing: '0.08em', textTransform: 'uppercase', display: 'block',
+                fontWeight: 800, fontSize: '0.62rem',
+                letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block',
               }}>
-                CG Education · VSK
+                Chhattisgarh VSK
               </Typography>
             </Box>
           )}
@@ -211,7 +332,7 @@ export default function AppLayout() {
             sx={{
               color: '#94a3b8',
               borderRadius: 1.5, p: 0.5,
-              '&:hover': { color: '#64748b', background: '#f1f5f9' },
+              '&:hover': { color: '#0f172a', background: '#f1f5f9' },
             }}
           >
             <ChevronLeft fontSize="small" />
@@ -222,54 +343,44 @@ export default function AppLayout() {
       {/* ── User Profile Card ─────────────────────────────────────────────────── */}
       {drawerOpen ? (
         <Box sx={{
-          mx: 1.75, mt: 2,
-          p: 1.75,
-          borderRadius: 2.5,
-          background: `linear-gradient(135deg, ${accent}0d 0%, ${accent}06 100%)`,
-          border: `1px solid ${accent}20`,
+          mx: 1.5, mt: 1.5, mb: 0.5,
+          p: 1.5,
+          borderRadius: 1.5,
+          background: `linear-gradient(135deg, ${alpha(accent, 0.08)} 0%, ${alpha(accent, 0.03)} 100%)`,
+          border: `1px solid ${alpha(accent, 0.18)}`,
         }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
             <Avatar sx={{
               width: 38, height: 38,
-              borderRadius: 2,
+              borderRadius: 1.5,
               background: getRoleBg(),
               fontSize: '0.9rem', fontWeight: 800,
-              boxShadow: `0 4px 12px ${accent}35`,
+              boxShadow: `0 4px 12px ${alpha(accent, 0.35)}`,
             }}>
               {user?.full_name?.[0]?.toUpperCase() || 'U'}
             </Avatar>
-            <Box sx={{ overflow: 'hidden', flex: 1 }}>
+            <Box sx={{ overflow: 'hidden', flex: 1, minWidth: 0 }}>
               <Typography sx={{
-                fontWeight: 800, color: '#0f172a',
-                fontSize: '0.83rem', whiteSpace: 'nowrap',
-                overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.2,
+                color: '#0f172a', fontWeight: 800, fontSize: '0.84rem',
+                lineHeight: 1.2,
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
               }}>
-                {user?.full_name}
+                {user?.full_name || 'Administrator'}
               </Typography>
               <Typography sx={{
                 color: accent,
-                fontWeight: 700, fontSize: '0.67rem', display: 'block', lineHeight: 1.2,
+                fontWeight: 800, fontSize: '0.66rem', display: 'block', lineHeight: 1.2, mt: 0.2
               }}>
                 {getRoleLabel()}
               </Typography>
             </Box>
           </Box>
-          {user?.school_name && (
-            <Typography sx={{
-              color: '#64748b', fontSize: '0.67rem',
-              display: 'block', mt: 0.75,
-              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-              fontWeight: 500,
-            }}>
-              🏫 {user.school_name}
-            </Typography>
-          )}
         </Box>
       ) : (
-        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 1.5 }}>
           <Tooltip title={`${user?.full_name} · ${getRoleLabel()}`} placement="right">
             <Avatar sx={{
-              width: 36, height: 36, borderRadius: 2,
+              width: 36, height: 36, borderRadius: 1.5,
               background: getRoleBg(),
               fontSize: '0.85rem', fontWeight: 800, cursor: 'pointer',
             }}>
@@ -279,22 +390,23 @@ export default function AppLayout() {
         </Box>
       )}
 
-      {/* ── Quick Create Button ────────────────────────────────────────────────── */}
+      {/* ── Quick Create Assessment Button (Teachers / School Admins) ─────────── */}
       {drawerOpen && canCreateAssessment && (
-        <Box sx={{ px: 1.75, mt: 1.75 }}>
+        <Box sx={{ px: 1.5, mt: 1 }}>
           <Button
             fullWidth size="small"
             onClick={() => { navigate('/assessments/new'); if (isMobile) setDrawerOpen(false); }}
             startIcon={<Add sx={{ fontSize: 17 }} />}
             sx={{
-              py: 1, borderRadius: 2.5,
+              py: 0.85, borderRadius: 1.5,
               background: `linear-gradient(135deg, ${accent}, ${accent}cc)`,
               color: '#ffffff',
-              fontWeight: 700, fontSize: '0.8rem',
-              boxShadow: `0 4px 14px ${accent}35`,
+              fontWeight: 800, fontSize: '0.78rem',
+              boxShadow: `0 4px 12px ${alpha(accent, 0.3)}`,
               border: 'none',
+              textTransform: 'none',
               '&:hover': {
-                boxShadow: `0 6px 20px ${accent}50`,
+                boxShadow: `0 6px 18px ${alpha(accent, 0.45)}`,
                 transform: 'translateY(-1px)',
               },
               transition: 'all 0.18s ease',
@@ -305,105 +417,135 @@ export default function AppLayout() {
         </Box>
       )}
 
-      {/* ── Nav Section Label ──────────────────────────────────────────────────── */}
-      {drawerOpen && (
-        <Typography sx={{
-          px: 2.5, mt: 2.25, mb: 0.5,
-          fontSize: '0.62rem', fontWeight: 800,
-          color: '#c1cdd9', letterSpacing: '0.1em',
-          textTransform: 'uppercase',
-        }}>
-          Navigation
-        </Typography>
-      )}
-
-      {/* ── Nav Items ──────────────────────────────────────────────────────────── */}
-      <List sx={{ flex: 1, px: 1, pt: 0, overflow: 'auto' }}>
-        {navItems.map((item) => {
-          const isExact    = location.pathname + location.search === item.path;
-          const isBasePath = !item.path.includes('?') && location.pathname === item.path;
-          const isActive   = isExact || isBasePath;
-
-          const btn = (
-            <ListItemButton
-              onClick={() => { navigate(item.path); if (isMobile) setDrawerOpen(false); }}
-              sx={{
-                borderRadius: 2.5, py: 1,
-                px: drawerOpen ? 1.5 : 1,
-                justifyContent: drawerOpen ? 'initial' : 'center',
-                background: isActive ? `${item.color}12` : 'transparent',
-                borderLeft: isActive ? `3px solid ${item.color}` : '3px solid transparent',
-                mb: 0.3,
-                '&:hover': {
-                  background: isActive ? `${item.color}15` : '#f8fafc',
-                },
-                transition: 'all 0.15s ease',
-              }}
-            >
-              <ListItemIcon sx={{
-                color: isActive ? item.color : '#94a3b8',
-                minWidth: drawerOpen ? 36 : 'auto',
-                justifyContent: 'center',
-                '& .MuiSvgIcon-root': { fontSize: 19 },
-                transition: 'color 0.15s ease',
+      {/* ── Categorized Navigation Sections List ──────────────────────────────── */}
+      <List sx={{
+        flex: 1,
+        px: 1,
+        pt: 0.5,
+        overflowY: 'auto',
+        '&::-webkit-scrollbar': { width: 4 },
+        '&::-webkit-scrollbar-thumb': { background: '#e2e8f0', borderRadius: 2 },
+      }}>
+        {navSections.map((section, sIdx) => (
+          <Box key={section.title || sIdx} sx={{ mb: 1 }}>
+            {/* Section Category Title */}
+            {drawerOpen && (
+              <Typography sx={{
+                px: 1.5,
+                pt: sIdx === 0 ? 0.75 : 1.5,
+                pb: 0.4,
+                fontSize: '0.62rem',
+                fontWeight: 800,
+                color: '#94a3b8',
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                fontFamily: '"Plus Jakarta Sans", sans-serif'
               }}>
-                {item.icon}
-              </ListItemIcon>
-              {drawerOpen && (
-                <ListItemText
-                  primary={item.label}
-                  primaryTypographyProps={{
-                    fontWeight: isActive ? 700 : 500,
-                    fontSize: '0.84rem',
-                    color: isActive ? '#0f172a' : '#64748b',
-                  }}
-                />
-              )}
-              {drawerOpen && item.badge && (
-                <Chip
-                  label={item.badge}
-                  size="small"
-                  sx={{
-                    height: 18, borderRadius: 1,
-                    fontSize: '0.58rem', fontWeight: 800,
-                    backgroundColor: `${item.color}15`,
-                    color: item.color,
-                    border: `1px solid ${item.color}30`,
-                    px: 0.25,
-                  }}
-                />
-              )}
-            </ListItemButton>
-          );
+                {section.title}
+              </Typography>
+            )}
+            {!drawerOpen && sIdx > 0 && (
+              <Divider sx={{ my: 0.75, borderColor: '#f1f5f9' }} />
+            )}
 
-          return (
-            <ListItem key={item.path} disablePadding sx={{ display: 'block' }}>
-              {!drawerOpen && !isMobile
-                ? <Tooltip title={item.label} placement="right">{btn}</Tooltip>
-                : btn
-              }
-            </ListItem>
-          );
-        })}
+            {/* Section Items */}
+            {section.items.map((item) => {
+              const isActive = isItemActive(item);
+
+              const btn = (
+                <ListItemButton
+                  onClick={() => {
+                    navigate(item.path);
+                    if (isMobile) setDrawerOpen(false);
+                  }}
+                  sx={{
+                    borderRadius: 1.5,
+                    py: 0.85,
+                    px: drawerOpen ? 1.4 : 1,
+                    justifyContent: drawerOpen ? 'initial' : 'center',
+                    background: isActive ? `linear-gradient(90deg, ${alpha(item.color, 0.12)} 0%, ${alpha(item.color, 0.04)} 100%)` : 'transparent',
+                    borderLeft: isActive ? `3.5px solid ${item.color}` : '3.5px solid transparent',
+                    boxShadow: isActive ? `0 2px 8px ${alpha(item.color, 0.1)}` : 'none',
+                    mb: 0.35,
+                    '&:hover': {
+                      background: isActive ? `linear-gradient(90deg, ${alpha(item.color, 0.16)} 0%, ${alpha(item.color, 0.06)} 100%)` : '#f8fafc',
+                    },
+                    transition: 'all 0.16s ease',
+                  }}
+                >
+                  <ListItemIcon sx={{
+                    color: isActive ? item.color : '#64748b',
+                    minWidth: drawerOpen ? 34 : 'auto',
+                    justifyContent: 'center',
+                    '& .MuiSvgIcon-root': { fontSize: 18 },
+                    transition: 'color 0.15s ease',
+                  }}>
+                    {item.icon}
+                  </ListItemIcon>
+
+                  {drawerOpen && (
+                    <ListItemText
+                      primary={item.label}
+                      primaryTypographyProps={{
+                        fontWeight: isActive ? 800 : 600,
+                        fontSize: '0.8rem',
+                        color: isActive ? '#0f172a' : '#475569',
+                        fontFamily: '"Plus Jakarta Sans", sans-serif',
+                        letterSpacing: '-0.01em',
+                      }}
+                    />
+                  )}
+
+                  {drawerOpen && item.badge && (
+                    <Chip
+                      label={item.badge}
+                      size="small"
+                      sx={{
+                        height: 18,
+                        borderRadius: 1,
+                        fontSize: '0.58rem',
+                        fontWeight: 800,
+                        backgroundColor: `${item.color}15`,
+                        color: item.color,
+                        border: `1px solid ${item.color}35`,
+                        px: 0.25,
+                      }}
+                    />
+                  )}
+                </ListItemButton>
+              );
+
+              return (
+                <ListItem key={item.path} disablePadding sx={{ display: 'block' }}>
+                  {!drawerOpen && !isMobile
+                    ? <Tooltip title={item.label} placement="right">{btn}</Tooltip>
+                    : btn
+                  }
+                </ListItem>
+              );
+            })}
+          </Box>
+        ))}
       </List>
 
-      {/* ── Footer ─────────────────────────────────────────────────────────────── */}
+      {/* ── Footer Status & Sign Out ─────────────────────────────────────────── */}
       {drawerOpen && (
-        <Box sx={{ px: 1.75, pb: 1 }}>
+        <Box sx={{ px: 1.5, pb: 0.5 }}>
           <Box sx={{
-            p: 1.25, borderRadius: 2,
+            p: 1.2,
+            borderRadius: 1.5,
             background: '#f8fafc',
             border: '1px solid #e2e8f0',
-            mb: 1.25,
+            mb: 1,
           }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
               <FiberManualRecord sx={{ fontSize: 8, color: '#10b981' }} />
-              <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: '#374151' }}>
+              <Typography sx={{ fontSize: '0.68rem', fontWeight: 800, color: '#1e293b' }}>
                 Session 2026-27 · Active
               </Typography>
             </Box>
-            <Typography sx={{ fontSize: '0.63rem', color: '#94a3b8', mt: 0.2, fontWeight: 500 }}>
-              UDISE+ Government Platform
+            <Typography sx={{ fontSize: '0.62rem', color: '#94a3b8', mt: 0.2, fontWeight: 600 }}>
+              UDISE+ Live State Telemetry
             </Typography>
           </Box>
         </Box>
@@ -414,19 +556,21 @@ export default function AppLayout() {
           <ListItemButton
             onClick={handleLogout}
             sx={{
-              borderRadius: 2.5, py: 0.9,
+              borderRadius: 1.5,
+              py: 0.85,
               color: '#ef4444',
               background: '#fef2f2',
               border: '1px solid #fee2e2',
               '&:hover': { background: '#fde8e8', borderColor: '#fca5a5' },
+              transition: 'all 0.15s ease'
             }}
           >
-            <ListItemIcon sx={{ color: '#ef4444', minWidth: 34 }}>
+            <ListItemIcon sx={{ color: '#ef4444', minWidth: 32 }}>
               <Logout fontSize="small" />
             </ListItemIcon>
             <ListItemText
               primary="Sign Out"
-              primaryTypographyProps={{ fontWeight: 700, fontSize: '0.83rem', color: '#ef4444' }}
+              primaryTypographyProps={{ fontWeight: 800, fontSize: '0.8rem', color: '#ef4444' }}
             />
           </ListItemButton>
         ) : (
@@ -463,7 +607,7 @@ export default function AppLayout() {
             onClick={() => setDrawerOpen(v => !v)}
             sx={{
               color: '#374151', mr: 0.5,
-              borderRadius: 2,
+              borderRadius: 1.5,
               border: '1px solid #e5e7eb',
               p: 0.8,
               '&:hover': { background: '#f9fafb', borderColor: '#d1d5db' },
@@ -475,11 +619,11 @@ export default function AppLayout() {
           {/* Page Title */}
           <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', gap: 1.5, overflow: 'hidden' }}>
             <Typography sx={{
-              fontWeight: 800, color: '#0f172a',
-              fontSize: { xs: '0.88rem', sm: '0.98rem' },
+              fontWeight: 900, color: '#0f172a',
+              fontSize: { xs: '0.88rem', sm: '1.02rem' },
               fontFamily: '"Plus Jakarta Sans", sans-serif',
               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-              letterSpacing: '-0.01em',
+              letterSpacing: '-0.02em',
             }}>
               {getPageTitle()}
             </Typography>
@@ -491,7 +635,7 @@ export default function AppLayout() {
               border: '1px solid rgba(16,185,129,0.2)',
             }}>
               <FiberManualRecord sx={{ fontSize: 7, color: '#10b981' }} />
-              <Typography sx={{ fontSize: '0.67rem', fontWeight: 700, color: '#059669' }}>
+              <Typography sx={{ fontSize: '0.67rem', fontWeight: 800, color: '#059669' }}>
                 2026-27 · Live
               </Typography>
             </Box>
@@ -501,7 +645,7 @@ export default function AppLayout() {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
             <Tooltip title="Help & Guide">
               <IconButton size="small" sx={{
-                color: '#6b7280', borderRadius: 2,
+                color: '#6b7280', borderRadius: 1.5,
                 '&:hover': { background: '#f3f4f6', color: '#374151' },
               }}>
                 <HelpOutlineOutlined sx={{ fontSize: 20 }} />
@@ -510,7 +654,7 @@ export default function AppLayout() {
 
             <Tooltip title="Notifications">
               <IconButton size="small" sx={{
-                color: '#6b7280', borderRadius: 2,
+                color: '#6b7280', borderRadius: 1.5,
                 '&:hover': { background: '#f3f4f6', color: '#374151' },
               }}>
                 <Badge
@@ -536,7 +680,7 @@ export default function AppLayout() {
               sx={{
                 display: 'flex', alignItems: 'center', gap: 1,
                 cursor: 'pointer', px: 1.2, py: 0.5,
-                borderRadius: 3,
+                borderRadius: 1.5,
                 border: '1px solid #e5e7eb',
                 background: '#f9fafb',
                 '&:hover': { background: '#f3f4f6', borderColor: '#d1d5db' },
@@ -544,14 +688,14 @@ export default function AppLayout() {
               }}
             >
               <Avatar sx={{
-                width: 30, height: 30, borderRadius: 1.5,
+                width: 30, height: 30, borderRadius: 1.2,
                 background: getRoleBg(),
                 fontSize: '0.78rem', fontWeight: 800,
               }}>
                 {user?.full_name?.[0]?.toUpperCase() || 'U'}
               </Avatar>
               <Box sx={{ display: { xs: 'none', sm: 'block' }, textAlign: 'left' }}>
-                <Typography sx={{ fontWeight: 700, color: '#111827', lineHeight: 1.2, fontSize: '0.82rem' }}>
+                <Typography sx={{ fontWeight: 800, color: '#111827', lineHeight: 1.2, fontSize: '0.82rem' }}>
                   {user?.full_name?.split(' ')[0]}
                 </Typography>
                 <Typography sx={{ color: '#6b7280', fontSize: '0.67rem', display: 'block', lineHeight: 1.2 }}>
@@ -570,7 +714,7 @@ export default function AppLayout() {
               PaperProps={{
                 sx: {
                   minWidth: 220, mt: 1.5,
-                  borderRadius: 2.5,
+                  borderRadius: 1.5,
                   border: '1px solid #e5e7eb',
                   boxShadow: '0 16px 40px rgba(0,0,0,0.10), 0 4px 12px rgba(0,0,0,0.06)',
                   p: 0.5,
@@ -578,7 +722,7 @@ export default function AppLayout() {
               }}
             >
               <Box sx={{ px: 2, py: 1.5, borderBottom: '1px solid #f3f4f6', mb: 0.5 }}>
-                <Typography sx={{ fontWeight: 700, fontSize: '0.875rem', color: '#111827' }}>
+                <Typography sx={{ fontWeight: 800, fontSize: '0.875rem', color: '#111827' }}>
                   {user?.full_name}
                 </Typography>
                 <Typography sx={{ fontSize: '0.72rem', color: '#6b7280' }}>
@@ -587,14 +731,14 @@ export default function AppLayout() {
               </Box>
               <MenuItem
                 onClick={() => { setAnchorEl(null); navigate('/dashboard'); }}
-                sx={{ borderRadius: 1.5, fontSize: '0.84rem', fontWeight: 600, py: 1, color: '#374151', '&:hover': { background: '#f0f9ff', color: '#0284c7' } }}
+                sx={{ borderRadius: 1.2, fontSize: '0.84rem', fontWeight: 700, py: 1, color: '#374151', '&:hover': { background: '#f0f9ff', color: '#0284c7' } }}
               >
                 <Dashboard sx={{ mr: 1.5, fontSize: 18, color: '#0284c7' }} /> Dashboard
               </MenuItem>
               {canCreateAssessment && (
                 <MenuItem
                   onClick={() => { setAnchorEl(null); navigate('/assessments/new'); }}
-                  sx={{ borderRadius: 1.5, fontSize: '0.84rem', fontWeight: 600, py: 1, color: '#374151', '&:hover': { background: '#f0fdf4', color: '#10b981' } }}
+                  sx={{ borderRadius: 1.2, fontSize: '0.84rem', fontWeight: 700, py: 1, color: '#374151', '&:hover': { background: '#f0fdf4', color: '#10b981' } }}
                 >
                   <Add sx={{ mr: 1.5, fontSize: 18, color: '#10b981' }} /> New Assessment
                 </MenuItem>
@@ -602,7 +746,7 @@ export default function AppLayout() {
               <Divider sx={{ my: 0.5 }} />
               <MenuItem
                 onClick={handleLogout}
-                sx={{ color: '#ef4444', fontWeight: 700, borderRadius: 1.5, py: 1, '&:hover': { background: '#fef2f2' } }}
+                sx={{ color: '#ef4444', fontWeight: 800, borderRadius: 1.2, py: 1, '&:hover': { background: '#fef2f2' } }}
               >
                 <Logout sx={{ mr: 1.5, fontSize: 18 }} /> Sign Out
               </MenuItem>

@@ -18,11 +18,10 @@ const {
 // All academic routes require authentication
 router.use(authenticate);
 
-// Role guard – STATE_ADMIN, SUPER_ADMIN, and DISTRICT_ADMIN can access
+// Role guard – All authenticated portal roles can access Academic Analytics
 const roleCheck = (req, res, next) => {
-  const allowed = ['STATE_ADMIN', 'SUPER_ADMIN', 'DISTRICT_ADMIN', 'PRINCIPAL', 'BLOCK_ADMIN', 'CLUSTER_ADMIN'];
-  if (!allowed.includes(req.user?.role)) {
-    return res.status(403).json({ error: 'Access denied' });
+  if (!req.user) {
+    return res.status(401).json({ error: 'Authentication required' });
   }
   next();
 };
